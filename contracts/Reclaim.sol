@@ -97,7 +97,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * pass 0 to fetch the current epoch
 	 */
 	function fetchEpoch(uint32 epoch) public view returns (Epoch memory) {
-		if(epoch == 0) {
+		if (epoch == 0) {
 			return epochs[epochs.length - 1];
 		}
 		return epochs[epoch - 1];
@@ -125,9 +125,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			"\n",
 			StringUtils.uint2str(timestampS)
 		);
-		bytes memory completeHash = abi.encodePacked(
-			keccak256(completeInput)
-		);
+		bytes memory completeHash = abi.encodePacked(keccak256(completeInput));
 
 		Witness[] memory witnessesLeftList = epochData.witnesses;
 		Witness[] memory selectedWitnesses = new Witness[](
@@ -136,7 +134,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		uint witnessesLeft = witnessesLeftList.length;
 
 		uint byteOffset = 0;
-		for(uint32 i = 0;i < epochData.minimumWitnessesForClaimCreation;i++) {
+		for (uint32 i = 0; i < epochData.minimumWitnessesForClaimCreation; i++) {
 			uint randomSeed = BytesUtils.bytesToUInt(completeHash, byteOffset);
 			uint witnessIndex = randomSeed % witnessesLeft;
 			selectedWitnesses[i] = witnessesLeftList[witnessIndex];
@@ -148,19 +146,19 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			// since solidity doesn't support "pop()" in memory arrays
 			// we swap the last element with the element we want to remove
 			witnessesLeftList[witnessIndex] = epochData.witnesses[witnessesLeft - 1];
-			byteOffset = (byteOffset + 4) % completeHash.length; 
+			byteOffset = (byteOffset + 4) % completeHash.length;
 			witnessesLeft -= 1;
 		}
 
 		return selectedWitnesses;
-	}	
+	}
 
 	/**
 	 * Get the provider name from the proof
 	 */
 	function getProviderFromProof(
 		SuperProof memory superProof
-	) external pure returns (address) {
+	) external pure returns (string memory) {
 		return superProof.claimInfo.provider;
 	}
 
@@ -170,7 +168,8 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	function getContextMessageFromProof(
 		SuperProof memory superProof
 	) external pure returns (string memory) {
-		return superProof.claimInfo.context.substr(20);
+		string memory context = superProof.claimInfo.context;
+		return StringUtils.substring(context, 42, bytes(context).length);
 	}
 
 	/**
@@ -178,80 +177,71 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 */
 	function getContextAddressFromProof(
 		SuperProof memory superProof
-	) external pure returns (address) {
-		return superProof.claimInfo.content.substr(0,20);
+	) external pure returns (string memory) {
+		string memory context = superProof.claimInfo.context;
+		return StringUtils.substring(context, 0, 42);
 	}
 
 	/**
-	 * Call the function externally
-	 * to assert the validity of several claims proofs
+	 * Call the function to assert
+	 * the validity of several claims proofs
 	 */
-    function verifyProofs(
-		SuperProof[] memory superProofs
-	) external view {
-		
-		// loop over every superProof given
-		for (uint8 ind = 0; ind < superProofs.length; ind++) {
-			SuperProof memory superProof = superProofs[ind];
-			// create signed claim using claimData and signature.
-			require(superProof.signedClaim.signatures.length > 0, "No signatures");
-			Claims.SignedClaim memory signed = Claims.SignedClaim(superProof.signedClaim.claim, superProof.signedClaim.signatures);
+	function verifyProof(SuperProof memory superProof) public view {
+		// create signed claim using claimData and signature.
+		require(superProof.signedClaim.signatures.length > 0, "No signatures");
+		Claims.SignedClaim memory signed = Claims.SignedClaim(
+			superProof.signedClaim.claim,
+			superProof.signedClaim.signatures
+		);
 
-			// check if the hash from the claimInfo is equal to the infoHash in the claimData
-			bytes32 hashed = Claims.hashClaimInfo(superProof.claimInfo);
-			require(superProof.signedClaim.claim.identifier == hashed);
+		// check if the hash from the claimInfo is equal to the infoHash in the claimData
+		bytes32 hashed = Claims.hashClaimInfo(superProof.claimInfo);
+		require(superProof.signedClaim.claim.identifier == hashed);
 
-			// fetch witness list from fetchEpoch(_epoch).witnesses
-			Witness[] memory expectedWitnesses = fetchWitnessesForClaim(
-				superProof.signedClaim.claim.epoch,
-				superProof.signedClaim.claim.identifier,
-				superProof.signedClaim.claim.timestampS
-			);
-			address[] memory signedWitnesses = Claims.recoverSignersOfSignedClaim(signed);
-			// check if the number of signatures is equal to the number of witnesses
-			require(signedWitnesses.length == expectedWitnesses.length, "Number of signatures not equal to number of witnesses");
+		// fetch witness list from fetchEpoch(_epoch).witnesses
+		Witness[] memory expectedWitnesses = fetchWitnessesForClaim(
+			superProof.signedClaim.claim.epoch,
+			superProof.signedClaim.claim.identifier,
+			superProof.signedClaim.claim.timestampS
+		);
+		address[] memory signedWitnesses = Claims.recoverSignersOfSignedClaim(signed);
+		// check if the number of signatures is equal to the number of witnesses
+		require(
+			signedWitnesses.length == expectedWitnesses.length,
+			"Number of signatures not equal to number of witnesses"
+		);
 
-			// Update awaited: more checks on whose signatures can be considered.
-			for (uint256 i = 0; i< signed.signatures.length; i++)
-			{
-				bool found = false;
-				for (uint j = 0; j < expectedWitnesses.length; j++)
-				{
-					if (signedWitnesses[i] == expectedWitnesses[j].addr) {
-						found = true;
-						break;
-					}
+		// Update awaited: more checks on whose signatures can be considered.
+		for (uint256 i = 0; i < signed.signatures.length; i++) {
+			bool found = false;
+			for (uint j = 0; j < expectedWitnesses.length; j++) {
+				if (signedWitnesses[i] == expectedWitnesses[j].addr) {
+					found = true;
+					break;
 				}
-				require(found, "Signature not appropriate");
 			}
-
-			//@TODO: verify zkproof
+			require(found, "Signature not appropriate");
 		}
-    }
 
-	function createGroup(
-		uint256 groupId,
-		uint256 merkleTreeDepth,
-		address admin
-	) external {
-		SemaphoreInterface(semaphoreAddress).createGroup(groupId, merkleTreeDepth, address(this));
+		//@TODO: verify zkproof
 	}
 
 	function merkelizeUser(
 		uint256 groupId,
-		SuperProof[] memory superProofs,
+		SuperProof memory superProof,
 		uint256 _identityCommitment
 	) external {
-		verifyProofs(superProofs);
+		verifyProof(superProof);
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
 	}
 
 	function verifyMerkelIdentity(
+		uint256 groupId,
 		uint256 _merkleTreeRoot,
-        uint256 _signal,
-        uint256 _nullifierHash,
-        uint256 _externalNullifier,
-        uint256[8] calldata _proof
+		uint256 _signal,
+		uint256 _nullifierHash,
+		uint256 _externalNullifier,
+		uint256[8] calldata _proof
 	) external {
 		SemaphoreInterface(semaphoreAddress).verifyProof(
 			groupId,
@@ -267,13 +257,13 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * @dev Add a new epoch
 	 */
 	function addNewEpoch() external onlyOwner {
-		if(epochDurationS == 0) {
+		if (epochDurationS == 0) {
 			epochDurationS = 1 days;
 		}
-		if(epochs.length > 0) {
+		if (epochs.length > 0) {
 			epochs[epochs.length - 1].timestampEnd = uint32(block.timestamp);
 		}
-		
+
 		currentEpoch += 1;
 		epochs.push(
 			Epoch(
@@ -331,6 +321,17 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	}
 
 	// admin functions ---
+
+	function createGroup(
+		uint256 groupId,
+		uint256 merkleTreeDepth // address admin
+	) external onlyOwner {
+		SemaphoreInterface(semaphoreAddress).createGroup(
+			groupId,
+			merkleTreeDepth,
+			address(this)
+		);
+	}
 
 	function updateWitnessWhitelist(address addr, bool isWhitelisted) external onlyOwner {
 		if (isWhitelisted) {
