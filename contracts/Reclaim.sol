@@ -10,6 +10,8 @@ import "./lib/Random.sol";
 import "./lib/StringUtils.sol";
 import "./lib/BytesUtils.sol";
 
+// import "hardhat/console.sol";
+
 /**
  * Reclaim Beacon contract
  */
@@ -67,6 +69,8 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	uint32 public currentEpoch;
 
 	event EpochAdded(Epoch epoch);
+
+	event GroupCreated(uint256 indexed groupId, string indexed provider);
 
 	/**
 	 * @notice Calls initialize on the base contracts
@@ -227,11 +231,11 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	}
 
 	function merkelizeUser(
-		uint256 groupId,
 		SuperProof memory superProof,
 		uint256 _identityCommitment
 	) external {
 		verifyProof(superProof);
+		uint256 groupId = calculateGroupIdFromProvider(superProof.claimInfo.provider);
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
 	}
 
@@ -323,14 +327,16 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	// admin functions ---
 
 	function createGroup(
-		uint256 groupId,
+		string memory provider,
 		uint256 merkleTreeDepth // address admin
 	) external onlyOwner {
+		uint256 groupId = calculateGroupIdFromProvider(provider);
 		SemaphoreInterface(semaphoreAddress).createGroup(
 			groupId,
 			merkleTreeDepth,
 			address(this)
 		);
+		emit GroupCreated(groupId, provider);
 	}
 
 	function updateWitnessWhitelist(address addr, bool isWhitelisted) external onlyOwner {
@@ -420,5 +426,20 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		}
 
 		return b - a;
+	}
+
+	/**
+	 * @dev Get/Calculate the groupId for a specific provider
+	 */
+	function calculateGroupIdFromProvider(
+		string memory provider
+	) internal pure returns (uint256) {
+		bytes memory providerBytes = bytes(provider);
+		bytes memory hashedProvider = abi.encodePacked(keccak256(providerBytes));
+		uint256 groupId = BytesUtils.bytesToUInt(
+			hashedProvider,
+			hashedProvider.length - 4
+		);
+		return groupId;
 	}
 }

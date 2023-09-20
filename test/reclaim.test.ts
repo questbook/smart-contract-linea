@@ -4,11 +4,12 @@ import {
   fetchWitnessListForClaim,
   hashClaimInfo,
 } from "@reclaimprotocol/crypto-sdk";
-// import { generateProof } from "@semaphore-protocol/proof";
 import { expect } from "chai";
 import { Wallet, utils } from "ethers";
 import { Reclaim } from "../src/types";
 import { deployReclaimContract, randomEthAddress, randomWallet } from "./utils";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 const NUM_WITNESSES = 5;
 const MOCK_HOST_PREFIX = "localhost:555";
@@ -17,10 +18,11 @@ describe("Reclaim Tests", () => {
   let contract: Reclaim;
 
   let witnesses: { wallet: Wallet; host: string }[] = [];
+  let owner: SignerWithAddress;
 
   beforeEach(async () => {
-    contract = await deployReclaimContract();
-
+    owner = await ethers.getSigners()[0];
+    contract = await deployReclaimContract(owner);
     witnesses = [];
     for (let i = 0; i < NUM_WITNESSES; i++) {
       const witness = await randomWallet();
@@ -38,7 +40,7 @@ describe("Reclaim Tests", () => {
 
     const expectedRejections = [
       () => contract.updateWitnessWhitelist(randomEthAddress(), true),
-      () => contract.createGroup(1, 2),
+      () => contract.createGroup("test", 2),
     ];
 
     for (const reject of expectedRejections) {
@@ -67,7 +69,7 @@ describe("Reclaim Tests", () => {
     let user;
     beforeEach(async () => {
       user = await randomWallet();
-      const provider = "uidai-dob";
+      const provider = "google-account";
       const parameters = '{"dob":"0000-00-00"}';
       const context = randomEthAddress() + "some-application-specific-context";
 
@@ -128,6 +130,36 @@ describe("Reclaim Tests", () => {
       const result = await contract.getContextAddressFromProof(superProofs[0]);
       let context = superProofs[0].claimInfo.context as string;
       expect(result).to.equal(context.substring(0, 42));
+    });
+
+    it("should return the context address from the proof", async () => {
+      const result = await contract.getContextAddressFromProof(superProofs[0]);
+      let context = superProofs[0].claimInfo.context as string;
+      expect(result).to.equal(context.substring(0, 42));
+    });
+
+    it("emit an event after creating a group", async () => {
+      expect(await contract.createGroup("test", 18)).to.emit(
+        contract,
+        "GroupCreated"
+      );
+    });
+
+    it("should create unique groupId for each provider", async () => {
+      const providersMock = ["google-account", "github-cred", "account-google"];
+      const groupIds: Set<Number> = new Set();
+      for (let provider of providersMock) {
+        const txReceipt = await (
+          await contract.createGroup(provider, 18)
+        ).wait();
+        if (
+          txReceipt.events !== undefined &&
+          txReceipt.events[2].args !== undefined
+        ) {
+          groupIds.add(txReceipt.events[2].args[0].toNumber());
+        }
+      }
+      expect(providersMock.length).to.equal(groupIds.size);
     });
   });
 });
