@@ -182,18 +182,29 @@ describe("Reclaim Tests", () => {
       let { contract, superProofs, semaphore } = await loadFixture(
         proofsFixture
       );
-      const identity = new Identity();
 
+      // SemaphoreEthers obj to ease querying data from semaphore
+      const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
+        address: semaphore.address,
+      });
+      // init two identities
+      const identity = new Identity();
+      const identitySec = new Identity();
+
+      const member = identity.getCommitment().toString();
+      const memberSec = identitySec.getCommitment().toString();
+
+      // Creating group and add member through recalim
       const tx = await contract.createGroup(
         superProofs[1].claimInfo.provider,
-        18
+        20
       );
       const txReceipt = await tx.wait(1);
 
-      const member = identity.getCommitment().toString();
-      // console.log(member);
       await contract.merkelizeUser(superProofs[1], member);
+      await contract.merkelizeUser(superProofs[0], memberSec);
 
+      // get groupId from events
       let groupId;
       if (
         txReceipt.events !== undefined &&
@@ -202,41 +213,40 @@ describe("Reclaim Tests", () => {
         groupId = txReceipt.events[2].args[0].toString();
       }
 
-      const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
-        address: semaphore.address,
-      });
+      let group = new Group(groupId);
+      group.addMember(member);
 
       const admin = await semaphoreEthers.getGroupAdmin(groupId);
       const memberFromSemaphore = await semaphoreEthers.getGroupMembers(
         groupId
       );
+
       expect(memberFromSemaphore[0]).to.equal(member);
       expect(contract.address).to.equal(admin);
-      // let group = new Group(groupId);
-      // group.addMember(member);
-      // const externalNullifier = utils.formatBytes32String("Google");
-      // const signal = utils.formatBytes32String("Hellox");
-      // const fullProof = await generateProof(
-      //   identity,
-      //   group,
-      //   externalNullifier,
-      //   signal,
-      //   {
-      //     zkeyFilePath: "./resources/semaphore.zkey",
-      //     wasmFilePath: "./resources/semaphore.wasm",
-      //   }
-      // );
-      // console.log(fullProof);
-      // await contract.verifyMerkelIdentity(
-      //   groupId,
-      //   fullProof.merkleTreeRoot,
-      //   fullProof.signal,
-      //   fullProof.nullifierHash,
-      //   fullProof.externalNullifier,
-      //   fullProof.proof
-      // );
 
-      // console.log(await semaphoreEthers.getGroupVerifiedProofs(groupId));
+      const signal = utils.formatBytes32String("Hellox");
+      const fullProof = await generateProof(identity, group, groupId, signal, {
+        zkeyFilePath: "./resources/semaphore.zkey",
+        wasmFilePath: "./resources/semaphore.wasm",
+      });
+
+      const semaphoreTransaction = await contract.verifyMerkelIdentity(
+        groupId,
+        fullProof.merkleTreeRoot,
+        fullProof.signal,
+        fullProof.nullifierHash,
+        fullProof.externalNullifier,
+        fullProof.proof
+      );
+      await expect(semaphoreTransaction)
+        .to.emit(semaphore, "ProofVerified")
+        .withArgs(
+          groupId,
+          fullProof.merkleTreeRoot,
+          fullProof.nullifierHash,
+          groupId,
+          fullProof.signal
+        );
     });
   });
 });
