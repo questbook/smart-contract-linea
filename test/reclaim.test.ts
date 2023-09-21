@@ -16,6 +16,7 @@ import { ethers, network, run } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SemaphoreEthers } from "@semaphore-protocol/data";
+import { randomBytes } from "crypto";
 
 const NUM_WITNESSES = 5;
 const MOCK_HOST_PREFIX = "localhost:555";
@@ -245,6 +246,61 @@ describe("Reclaim Tests", () => {
           groupId,
           fullProof.signal
         );
+    });
+
+    it("should fail to merkelize user with no signatures error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const identity = new Identity();
+
+      const member = identity.getCommitment().toString();
+
+      await contract.createGroup(superProofs[1].claimInfo.provider, 20);
+
+      superProofs[1].signedClaim.signatures = [];
+
+      expect(contract.merkelizeUser(superProofs[1], member)).to.be.revertedWith(
+        "No signatures"
+      );
+    });
+
+    it("should fail to merkelize user with number of signatures not equal to number of witnesses error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const identity = new Identity();
+
+      const member = identity.getCommitment().toString();
+
+      await contract.createGroup(superProofs[1].claimInfo.provider, 20);
+
+      superProofs[1].signedClaim.signatures.pop();
+
+      expect(contract.merkelizeUser(superProofs[1], member)).to.be.revertedWith(
+        "Number of signatures not equal to number of witnesses"
+      );
+    });
+
+    it("should fail to merkelize user with signatures not appropriate error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const identity = new Identity();
+
+      const member = identity.getCommitment().toString();
+
+      await contract.createGroup(superProofs[1].claimInfo.provider, 20);
+
+      superProofs[1].signedClaim.signatures.pop();
+      superProofs[1].signedClaim.signatures = [
+        randomBytes(12),
+        ...superProofs[1].signedClaim.signatures,
+      ];
+
+      expect(contract.merkelizeUser(superProofs[1], member)).to.be.revertedWith(
+        "Signature not appropriate"
+      );
     });
   });
 });
