@@ -4,26 +4,27 @@ import {
   fetchWitnessListForClaim,
   hashClaimInfo,
 } from "@reclaimprotocol/crypto-sdk";
+
+import { Identity } from "@semaphore-protocol/identity";
+import { Group } from "@semaphore-protocol/group";
+import { generateProof } from "@semaphore-protocol/proof";
 import { expect } from "chai";
 import { Wallet, utils } from "ethers";
 import { Reclaim } from "../src/types";
 import { deployReclaimContract, randomEthAddress, randomWallet } from "./utils";
-import { ethers } from "hardhat";
+import { ethers, network } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { SemaphoreEthers } from "@semaphore-protocol/data";
 
 const NUM_WITNESSES = 5;
 const MOCK_HOST_PREFIX = "localhost:555";
 
 describe("Reclaim Tests", () => {
-  let contract: Reclaim;
-
-  let witnesses: { wallet: Wallet; host: string }[] = [];
-  let owner: SignerWithAddress;
-
-  beforeEach(async () => {
-    owner = await ethers.getSigners()[0];
-    contract = await deployReclaimContract(owner);
-    witnesses = [];
+  async function deployFixture() {
+    let owner: SignerWithAddress = await ethers.getSigners()[0];
+    let contract: Reclaim = await deployReclaimContract(owner);
+    let witnesses: { wallet: Wallet; host: string }[] = [];
     for (let i = 0; i < NUM_WITNESSES; i++) {
       const witness = await randomWallet();
       const host = MOCK_HOST_PREFIX + i.toString();
@@ -31,9 +32,11 @@ describe("Reclaim Tests", () => {
       await contract.connect(witness).addAsWitness(witness.address, host);
       witnesses.push({ wallet: witness, host });
     }
-  });
+    return { contract, witnesses, owner };
+  }
 
   it("should fail to execute admin functions if not owner", async () => {
+    let { contract } = await loadFixture(deployFixture);
     const NOT_OWNER_MSG = "Ownable: caller is not the owner";
     const user = await randomWallet();
     contract = await contract.connect(user);
@@ -42,13 +45,13 @@ describe("Reclaim Tests", () => {
       () => contract.updateWitnessWhitelist(randomEthAddress(), true),
       () => contract.createGroup("test", 2),
     ];
-
     for (const reject of expectedRejections) {
-      await expect(reject()).to.be.revertedWith(NOT_OWNER_MSG);
+      expect(reject()).to.be.revertedWith(NOT_OWNER_MSG);
     }
   });
 
   it("should insert some epochs", async () => {
+    let { contract } = await loadFixture(deployFixture);
     const currentEpoch = await contract.currentEpoch();
     for (let i = 1; i < 5; i++) {
       const tx = await contract.addNewEpoch();
@@ -64,12 +67,20 @@ describe("Reclaim Tests", () => {
     }
   });
 
+  it("emit an event after creating a group", async () => {
+    let { contract } = await loadFixture(deployFixture);
+    expect(await contract.createGroup("test", 18)).to.emit(
+      contract,
+      "GroupCreated"
+    );
+  });
+
   describe("Proofs tests", async () => {
-    let superProofs;
-    let user;
-    beforeEach(async () => {
-      user = await randomWallet();
-      const provider = "google-account";
+    async function proofsFixture() {
+      let { contract, witnesses, owner } = await loadFixture(deployFixture);
+      let superProofs;
+      let user = await randomWallet(40);
+      const provider = "uid-dob";
       const parameters = '{"dob":"0000-00-00"}';
       const context = randomEthAddress() + "some-application-specific-context";
 
@@ -109,43 +120,45 @@ describe("Reclaim Tests", () => {
           },
         },
       ];
-    });
+      return { contract, witnesses, owner, user, superProofs };
+    }
+
+    beforeEach(async () => {});
 
     it("should verify a claim", async () => {
+      let { contract, user, superProofs } = await loadFixture(proofsFixture);
       await contract.connect(user).verifyProof(superProofs[1]);
     });
 
     it("should return the provider name from the proof", async () => {
+      let { contract, superProofs } = await loadFixture(proofsFixture);
       const result = await contract.getProviderFromProof(superProofs[0]);
       expect(result).to.equal(superProofs[0].claimInfo.provider);
     });
 
     it("should return the context message from the proof", async () => {
+      let { contract, superProofs } = await loadFixture(proofsFixture);
       const result = await contract.getContextMessageFromProof(superProofs[0]);
       let context = superProofs[0].claimInfo.context as string;
       expect(result).to.equal(context.substring(42, context.length));
     });
 
     it("should return the context address from the proof", async () => {
+      let { contract, superProofs } = await loadFixture(proofsFixture);
       const result = await contract.getContextAddressFromProof(superProofs[0]);
       let context = superProofs[0].claimInfo.context as string;
       expect(result).to.equal(context.substring(0, 42));
     });
 
     it("should return the context address from the proof", async () => {
+      let { contract, superProofs } = await loadFixture(proofsFixture);
       const result = await contract.getContextAddressFromProof(superProofs[0]);
       let context = superProofs[0].claimInfo.context as string;
       expect(result).to.equal(context.substring(0, 42));
     });
 
-    it("emit an event after creating a group", async () => {
-      expect(await contract.createGroup("test", 18)).to.emit(
-        contract,
-        "GroupCreated"
-      );
-    });
-
     it("should create unique groupId for each provider", async () => {
+      let { contract } = await loadFixture(proofsFixture);
       const providersMock = ["google-account", "github-cred", "account-google"];
       const groupIds: Set<Number> = new Set();
       for (let provider of providersMock) {
@@ -160,6 +173,65 @@ describe("Reclaim Tests", () => {
         }
       }
       expect(providersMock.length).to.equal(groupIds.size);
+    });
+
+    it("should contract be admin, merkelize the user and verify merkle identity", async () => {
+      let { contract, superProofs } = await loadFixture(proofsFixture);
+      const identity = new Identity();
+
+      const tx = await contract.createGroup(
+        superProofs[1].claimInfo.provider,
+        18
+      );
+      const txReceipt = await tx.wait(1);
+
+      const member = identity.getCommitment().toString();
+      // console.log(member);
+      await contract.merkelizeUser(superProofs[1], member);
+
+      let groupId;
+      if (
+        txReceipt.events !== undefined &&
+        txReceipt.events[2].args !== undefined
+      ) {
+        groupId = txReceipt.events[2].args[0].toString();
+      }
+
+      const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
+        address: "0x3889927F0B5Eb1a02C6E2C20b39a1Bd4EAd76131",
+      });
+
+      const admin = await semaphoreEthers.getGroupAdmin(groupId);
+      const memberFromSemaphore = await semaphoreEthers.getGroupMembers(
+        groupId
+      );
+      expect(memberFromSemaphore[0]).to.equal(member);
+      expect(contract.address).to.equal(admin);
+      // let group = new Group(groupId);
+      // group.addMember(member);
+      // const externalNullifier = utils.formatBytes32String("Google");
+      // const signal = utils.formatBytes32String("Hellox");
+      // const fullProof = await generateProof(
+      //   identity,
+      //   group,
+      //   externalNullifier,
+      //   signal,
+      //   {
+      //     zkeyFilePath: "./resources/semaphore.zkey",
+      //     wasmFilePath: "./resources/semaphore.wasm",
+      //   }
+      // );
+      // console.log(fullProof);
+      // await contract.verifyMerkelIdentity(
+      //   groupId,
+      //   fullProof.merkleTreeRoot,
+      //   fullProof.signal,
+      //   fullProof.nullifierHash,
+      //   fullProof.externalNullifier,
+      //   fullProof.proof
+      // );
+
+      // console.log(await semaphoreEthers.getGroupVerifiedProofs(groupId));
     });
   });
 });

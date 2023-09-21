@@ -48,6 +48,11 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.2",
+    "@semaphore-protocol/contracts": "^2.0.0",
+    "@semaphore-protocol/data": "^3.11.1",
+    "@semaphore-protocol/group": "^3.11.1",
+    "@semaphore-protocol/identity": "^3.11.1",
+    "@semaphore-protocol/proof": "^3.11.1",
     "alchemy-sdk": "^2.9.2",
     "operator-filter-registry": "^1.4.2"
   },
