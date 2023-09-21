@@ -4,6 +4,7 @@ dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
+import "@semaphore-protocol/hardhat";
 import "./tasks";
 
 const { PRIVATE_KEY, ALCHEMY_API_KEY, NETWORK } = process.env;
@@ -23,7 +24,7 @@ const API_TEMPLATE = "https://{{network}}.g.alchemy.com/v2/{{key}}";
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.17",
+    version: "0.8.4",
     settings: {
       viaIR: true,
       optimizer: {

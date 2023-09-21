@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./StringUtils.sol";
@@ -38,10 +38,10 @@ library Claims {
 	) internal pure {
 		require(self.signatures.length > 0, "No signatures");
 		address[] memory signedWitnesses = recoverSignersOfSignedClaim(self);
-		for(uint256 i = 0; i < expectedWitnessAddresses.length; i++) {
+		for (uint256 i = 0; i < expectedWitnessAddresses.length; i++) {
 			bool found = false;
-			for(uint256 j = 0; j < signedWitnesses.length; j++) {
-				if(signedWitnesses[j] == expectedWitnessAddresses[i]) {
+			for (uint256 j = 0; j < signedWitnesses.length; j++) {
+				if (signedWitnesses[j] == expectedWitnessAddresses[i]) {
 					found = true;
 					break;
 				}
@@ -53,7 +53,9 @@ library Claims {
 	/**
 	 * @dev recovers the signer of the claim
 	 */
-	function recoverSignersOfSignedClaim(SignedClaim memory self) internal pure returns (address[] memory) {
+	function recoverSignersOfSignedClaim(
+		SignedClaim memory self
+	) internal pure returns (address[] memory) {
 		bytes memory serialised = serialise(self.claim);
 		address[] memory signers = new address[](self.signatures.length);
 		for (uint256 i = 0; i < self.signatures.length; i++) {
@@ -69,16 +71,19 @@ library Claims {
 	 *
 	 * the serialisation is the same as done by the TS library
 	 */
-	function serialise(CompleteClaimData memory self) internal pure returns (bytes memory) {
-		return abi.encodePacked(
-			StringUtils.bytes2str(abi.encodePacked(self.identifier)),
-			"\n",
-			StringUtils.address2str(self.owner),
-			"\n",
-			StringUtils.uint2str(self.timestampS),
-			"\n",
-			StringUtils.uint2str(self.epoch)
-		);
+	function serialise(
+		CompleteClaimData memory self
+	) internal pure returns (bytes memory) {
+		return
+			abi.encodePacked(
+				StringUtils.bytes2str(abi.encodePacked(self.identifier)),
+				"\n",
+				StringUtils.address2str(self.owner),
+				"\n",
+				StringUtils.uint2str(self.timestampS),
+				"\n",
+				StringUtils.uint2str(self.epoch)
+			);
 	}
 
 	/**
