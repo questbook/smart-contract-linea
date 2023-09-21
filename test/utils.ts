@@ -2,7 +2,7 @@ import { randomBytes } from "crypto";
 import { BigNumber, Signer } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import type {} from "../hardhat.config";
-import { Reclaim } from "../src/types";
+import { Reclaim, Semaphore } from "../src/types";
 import type {} from "../src/types/hardhat";
 
 export function randomEthAddress() {
@@ -26,16 +26,15 @@ export async function randomWallet(balanceEth: BigNumber | number = 1) {
   return wallet;
 }
 
-export async function deployReclaimContract(signer?: Signer) {
+export async function deployReclaimContract(
+  semaphore: Semaphore,
+  signer?: Signer
+) {
   const factory = await ethers.getContractFactory("Reclaim", signer);
-  let reclaim = (await upgrades.deployProxy(
-    factory,
-    ["0x3889927F0B5Eb1a02C6E2C20b39a1Bd4EAd76131"],
-    {
-      kind: "uups",
-      initializer: "initialize",
-    }
-  )) as Reclaim;
+  let reclaim = (await upgrades.deployProxy(factory, [semaphore.address], {
+    kind: "uups",
+    initializer: "initialize",
+  })) as Reclaim;
 
   //   await reclaim.initialize();
   if (signer) {

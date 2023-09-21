@@ -10,9 +10,9 @@ import { Group } from "@semaphore-protocol/group";
 import { generateProof } from "@semaphore-protocol/proof";
 import { expect } from "chai";
 import { Wallet, utils } from "ethers";
-import { Reclaim } from "../src/types";
+import { Reclaim, Semaphore } from "../src/types";
 import { deployReclaimContract, randomEthAddress, randomWallet } from "./utils";
-import { ethers, network } from "hardhat";
+import { ethers, network, run } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SemaphoreEthers } from "@semaphore-protocol/data";
@@ -23,7 +23,8 @@ const MOCK_HOST_PREFIX = "localhost:555";
 describe("Reclaim Tests", () => {
   async function deployFixture() {
     let owner: SignerWithAddress = await ethers.getSigners()[0];
-    let contract: Reclaim = await deployReclaimContract(owner);
+    const { semaphore } = await run("deploy:semaphore");
+    let contract: Reclaim = await deployReclaimContract(semaphore, owner);
     let witnesses: { wallet: Wallet; host: string }[] = [];
     for (let i = 0; i < NUM_WITNESSES; i++) {
       const witness = await randomWallet();
@@ -32,7 +33,7 @@ describe("Reclaim Tests", () => {
       await contract.connect(witness).addAsWitness(witness.address, host);
       witnesses.push({ wallet: witness, host });
     }
-    return { contract, witnesses, owner };
+    return { contract, witnesses, owner, semaphore };
   }
 
   it("should fail to execute admin functions if not owner", async () => {
@@ -77,7 +78,9 @@ describe("Reclaim Tests", () => {
 
   describe("Proofs tests", async () => {
     async function proofsFixture() {
-      let { contract, witnesses, owner } = await loadFixture(deployFixture);
+      let { contract, witnesses, owner, semaphore } = await loadFixture(
+        deployFixture
+      );
       let superProofs;
       let user = await randomWallet(40);
       const provider = "uid-dob";
@@ -120,7 +123,7 @@ describe("Reclaim Tests", () => {
           },
         },
       ];
-      return { contract, witnesses, owner, user, superProofs };
+      return { contract, witnesses, owner, user, superProofs, semaphore };
     }
 
     beforeEach(async () => {});
@@ -176,7 +179,9 @@ describe("Reclaim Tests", () => {
     });
 
     it("should contract be admin, merkelize the user and verify merkle identity", async () => {
-      let { contract, superProofs } = await loadFixture(proofsFixture);
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
       const identity = new Identity();
 
       const tx = await contract.createGroup(
@@ -198,7 +203,7 @@ describe("Reclaim Tests", () => {
       }
 
       const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
-        address: "0x3889927F0B5Eb1a02C6E2C20b39a1Bd4EAd76131",
+        address: semaphore.address,
       });
 
       const admin = await semaphoreEthers.getGroupAdmin(groupId);
@@ -243,7 +248,8 @@ describe("Reclaim Witness Fetch Tests", () => {
   let witnesses: { wallet: Wallet; host: string }[] = [];
 
   beforeEach(async () => {
-    contract = await deployReclaimContract();
+    const { semaphore } = await run("deploy:semaphore");
+    contract = await deployReclaimContract(semaphore);
 
     witnesses = [];
     for (let i = 0; i < NUM_WITNESSES; i++) {

@@ -36,10 +36,10 @@ const config: HardhatUserConfig = {
   defaultNetwork: NETWORK,
   networks: {
     hardhat: {
-      forking: {
-        url: "https://eth-sepolia.g.alchemy.com/v2/" + ALCHEMY_API_KEY,
-        blockNumber: 3231111,
-      },
+      // forking: {
+      //   url: "https://eth-sepolia.g.alchemy.com/v2/" + ALCHEMY_API_KEY,
+      //   blockNumber: 3231111,
+      // },
       gas: 2100000,
       gasPrice: 8000000000,
     },
