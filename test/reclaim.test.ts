@@ -126,8 +126,6 @@ describe("Reclaim Tests", () => {
       return { contract, witnesses, owner, user, superProofs, semaphore };
     }
 
-    beforeEach(async () => {});
-
     it("should verify a claim", async () => {
       let { contract, user, superProofs } = await loadFixture(proofsFixture);
       await contract.connect(user).verifyProof(superProofs[1]);
