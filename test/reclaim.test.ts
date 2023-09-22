@@ -11,52 +11,52 @@ import { generateProof } from "@semaphore-protocol/proof";
 import { expect } from "chai";
 import { Wallet, utils } from "ethers";
 import { Reclaim, Semaphore } from "../src/types";
-import { deployReclaimContract, randomEthAddress, randomWallet } from "./utils";
+import {
+  deployReclaimContract,
+  generateMockWitnessesList,
+  randomEthAddress,
+  randomWallet,
+  randomiseWitnessList,
+} from "./utils";
 import { ethers, network, run } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { SemaphoreEthers } from "@semaphore-protocol/data";
 import { randomBytes } from "crypto";
 
-const NUM_WITNESSES = 5;
-const MOCK_HOST_PREFIX = "localhost:555";
-
 describe("Reclaim Tests", () => {
+  const NUM_WITNESSES = 5;
+  const MOCK_HOST_PREFIX = "localhost:555";
+
   async function deployFixture() {
     let owner: SignerWithAddress = await ethers.getSigners()[0];
-    const { semaphore } = await run("deploy:semaphore");
+    const { semaphore } = await run("deploy:semaphore", { logs: false });
     let contract: Reclaim = await deployReclaimContract(semaphore, owner);
-    let witnesses: { wallet: Wallet; host: string }[] = [];
-    for (let i = 0; i < NUM_WITNESSES; i++) {
-      const witness = await randomWallet();
-      const host = MOCK_HOST_PREFIX + i.toString();
-      await contract.updateWitnessWhitelist(witness.address, true);
-      await contract.connect(witness).addAsWitness(witness.address, host);
-      witnesses.push({ wallet: witness, host });
-    }
-    return { contract, witnesses, owner, semaphore };
+    let { mockWitnesses, witnessesWallets } = await generateMockWitnessesList(
+      NUM_WITNESSES,
+      MOCK_HOST_PREFIX
+    );
+    let witnesses = await randomiseWitnessList(mockWitnesses);
+    return { contract, witnesses, owner, semaphore, witnessesWallets };
   }
 
   it("should fail to execute admin functions if not owner", async () => {
-    let { contract } = await loadFixture(deployFixture);
+    let { contract, witnesses } = await loadFixture(deployFixture);
     const NOT_OWNER_MSG = "Ownable: caller is not the owner";
     const user = await randomWallet();
     contract = await contract.connect(user);
 
-    const expectedRejections = [
-      () => contract.updateWitnessWhitelist(randomEthAddress(), true),
-      () => contract.createGroup("test", 2),
-    ];
+    const expectedRejections = [() => contract.addNewEpoch(witnesses, 5)];
     for (const reject of expectedRejections) {
       expect(reject()).to.be.revertedWith(NOT_OWNER_MSG);
     }
   });
 
   it("should insert some epochs", async () => {
-    let { contract } = await loadFixture(deployFixture);
+    let { contract, witnesses } = await loadFixture(deployFixture);
     const currentEpoch = await contract.currentEpoch();
     for (let i = 1; i < 5; i++) {
-      const tx = await contract.addNewEpoch();
+      const tx = await contract.addNewEpoch(witnesses, 5);
       await tx.wait();
       // current epoch
       const epoch = await contract.fetchEpoch(0);
@@ -79,9 +79,8 @@ describe("Reclaim Tests", () => {
 
   describe("Proofs tests", async () => {
     async function proofsFixture() {
-      let { contract, witnesses, owner, semaphore } = await loadFixture(
-        deployFixture
-      );
+      let { contract, witnesses, owner, semaphore, witnessesWallets } =
+        await loadFixture(deployFixture);
       let superProofs;
       let user = await randomWallet(40);
       const provider = "uid-dob";
@@ -91,7 +90,7 @@ describe("Reclaim Tests", () => {
       const claimInfo = { provider, parameters, context };
       const infoHash = hashClaimInfo(claimInfo);
 
-      await contract.addNewEpoch();
+      await contract.addNewEpoch(witnesses, 5);
       const currentEpoch = await contract.currentEpoch();
 
       const timestampS = Math.floor(Date.now() / 1000);
@@ -105,7 +104,10 @@ describe("Reclaim Tests", () => {
 
       const claimDataStr = createSignDataForClaim(claimData);
       const signatures = await Promise.all(
-        witnesses.map((w) => w.wallet.signMessage(claimDataStr))
+        witnesses.map(async (w) => {
+          const addr = await w.addr;
+          return witnessesWallets[addr].signMessage(claimDataStr);
+        })
       );
 
       superProofs = [
@@ -248,6 +250,16 @@ describe("Reclaim Tests", () => {
         );
     });
 
+    it("should merkelize user and create group in one call", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const identity = new Identity();
+      const member = identity.getCommitment().toString();
+      const tx = await contract.merkelizeUser(superProofs[1], member);
+      expect(tx).to.emit(contract, "GroupCreated");
+    });
+
     it("should fail to merkelize user with no signatures error", async () => {
       let { contract, superProofs, semaphore } = await loadFixture(
         proofsFixture
@@ -307,27 +319,26 @@ describe("Reclaim Tests", () => {
 
 describe("Reclaim Witness Fetch Tests", () => {
   const NUM_WITNESSES = 15;
-
+  const MOCK_HOST_PREFIX = "localhost:555";
   let contract: Reclaim;
-  let witnesses: { wallet: Wallet; host: string }[] = [];
+  let witnesses: Reclaim.WitnessStruct[] = [];
 
   beforeEach(async () => {
-    const { semaphore } = await run("deploy:semaphore");
-    contract = await deployReclaimContract(semaphore);
+    const { semaphore } = await run("deploy:semaphore", {
+      logs: false,
+    });
 
-    witnesses = [];
-    for (let i = 0; i < NUM_WITNESSES; i++) {
-      const witness = await randomWallet();
-      const host = MOCK_HOST_PREFIX + i.toString();
-      await contract.updateWitnessWhitelist(witness.address, true);
-      await contract.connect(witness).addAsWitness(witness.address, host);
-      witnesses.push({ wallet: witness, host });
-    }
+    contract = await deployReclaimContract(semaphore);
+    let { mockWitnesses } = await generateMockWitnessesList(
+      NUM_WITNESSES,
+      MOCK_HOST_PREFIX
+    );
+    witnesses = await randomiseWitnessList(mockWitnesses);
   });
 
   // check TS & solidity implementations match
   it("match fetchWitnessList implementation for claim", async () => {
-    await contract.addNewEpoch();
+    await contract.addNewEpoch(witnesses, 5);
     const currentEpoch = await contract.fetchEpoch(0);
 
     const identifier = hashClaimInfo({

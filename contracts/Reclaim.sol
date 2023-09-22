@@ -63,6 +63,12 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * */
 	uint32 public currentEpoch;
 
+	/**
+	 * created groups mapping
+	 * map groupId with true if already created
+	 * */
+	mapping(uint256 => bool) createdGroups;
+
 	event EpochAdded(Epoch epoch);
 
 	event GroupCreated(uint256 indexed groupId, string indexed provider);
@@ -224,9 +230,26 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		//@TODO: verify zkproof
 	}
 
+	function createGroup(
+		string memory provider,
+		uint256 merkleTreeDepth // address admin
+	) public {
+		uint256 groupId = calculateGroupIdFromProvider(provider);
+		SemaphoreInterface(semaphoreAddress).createGroup(
+			groupId,
+			merkleTreeDepth,
+			address(this)
+		);
+		createdGroups[groupId] = true;
+		emit GroupCreated(groupId, provider);
+	}
+
 	function merkelizeUser(Proof memory proof, uint256 _identityCommitment) external {
 		verifyProof(proof);
 		uint256 groupId = calculateGroupIdFromProvider(proof.claimInfo.provider);
+		if (createdGroups[groupId] != true) {
+			createGroup(proof.claimInfo.provider, 20);
+		}
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
 	}
 
@@ -247,6 +270,8 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			_proof
 		);
 	}
+
+	// admin functions ---
 
 	/**
 	 * @dev Add a new epoch
@@ -273,21 +298,6 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			)
 		);
 		emit EpochAdded(epochs[epochs.length - 1]);
-	}
-
-	// admin functions ---
-
-	function createGroup(
-		string memory provider,
-		uint256 merkleTreeDepth // address admin
-	) external onlyOwner {
-		uint256 groupId = calculateGroupIdFromProvider(provider);
-		SemaphoreInterface(semaphoreAddress).createGroup(
-			groupId,
-			merkleTreeDepth,
-			address(this)
-		);
-		emit GroupCreated(groupId, provider);
 	}
 
 	// internal code -----

@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { BigNumber, Signer } from "ethers";
+import { BigNumber, Signer, Wallet } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import type {} from "../hardhat.config";
 import { Reclaim, Semaphore } from "../src/types";
@@ -42,4 +42,30 @@ export async function deployReclaimContract(
   }
 
   return reclaim;
+}
+
+export async function randomiseWitnessList(witnesses: Reclaim.WitnessStruct[]) {
+  const shuffle = (array: Reclaim.WitnessStruct[]) => {
+    return array.sort(() => Math.random() - 0.5);
+  };
+
+  const shuffledWitnesses = shuffle(witnesses);
+  return shuffledWitnesses;
+}
+
+export async function generateMockWitnessesList(
+  numOfWitnesses: number,
+  hostPrefix: string
+) {
+  let mockWitnesses: Reclaim.WitnessStruct[] = [];
+  let witnessesWallets: Record<string, Wallet> = {};
+  for (let i = 1; i <= numOfWitnesses; i++) {
+    const wallet: Wallet = await randomWallet();
+    mockWitnesses.push({
+      addr: wallet.address,
+      host: hostPrefix + i,
+    });
+    witnessesWallets[wallet.address] = wallet;
+  }
+  return { mockWitnesses, witnessesWallets };
 }
