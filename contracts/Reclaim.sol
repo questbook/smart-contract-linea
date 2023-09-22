@@ -12,6 +12,8 @@ import "./lib/BytesUtils.sol";
 
 // import "hardhat/console.sol";
 
+error Reclaim__GroupAlreadyExists();
+
 /**
  * Reclaim Beacon contract
  */
@@ -235,6 +237,9 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		uint256 merkleTreeDepth // address admin
 	) public {
 		uint256 groupId = calculateGroupIdFromProvider(provider);
+		if (createdGroups[groupId] == true) {
+			revert Reclaim__GroupAlreadyExists();
+		}
 		SemaphoreInterface(semaphoreAddress).createGroup(
 			groupId,
 			merkleTreeDepth,
