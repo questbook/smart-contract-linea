@@ -39,17 +39,11 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		uint8 minimumWitnessesForClaimCreation;
 	}
 
-	struct SuperProof {
+	struct Proof {
 		Claims.ClaimInfo claimInfo;
 		Claims.SignedClaim signedClaim;
 	}
 
-	/** list of all registered witnesses */
-	Witness[] public witnesses;
-	/** the minimum number of witnesses required to create a claim */
-	uint8 public minimumWitnessesForClaimCreation;
-	/** whitelist of addresses that can become witnesses */
-	mapping(address => bool) private witnessWhitelistMap;
 	/** list of all epochs */
 	Epoch[] public epochs;
 
@@ -62,6 +56,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * caching purposes
 	 * */
 	uint32 public epochDurationS; // 1 day
+
 	/**
 	 * current epoch.
 	 * starts at 1, so that the first epoch is 1
@@ -79,7 +74,6 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 */
 	function initialize(address _semaphoreAddress) external initializer {
 		__Ownable_init();
-		minimumWitnessesForClaimCreation = 5;
 		epochDurationS = 1 days;
 		currentEpoch = 0;
 		semaphoreAddress = _semaphoreAddress;
@@ -161,18 +155,18 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * Get the provider name from the proof
 	 */
 	function getProviderFromProof(
-		SuperProof memory superProof
+		Proof memory proof
 	) external pure returns (string memory) {
-		return superProof.claimInfo.provider;
+		return proof.claimInfo.provider;
 	}
 
 	/**
 	 * Get the context message from the proof
 	 */
 	function getContextMessageFromProof(
-		SuperProof memory superProof
+		Proof memory proof
 	) external pure returns (string memory) {
-		string memory context = superProof.claimInfo.context;
+		string memory context = proof.claimInfo.context;
 		return StringUtils.substring(context, 42, bytes(context).length);
 	}
 
@@ -180,9 +174,9 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * Get the context address from the proof
 	 */
 	function getContextAddressFromProof(
-		SuperProof memory superProof
+		Proof memory proof
 	) external pure returns (string memory) {
-		string memory context = superProof.claimInfo.context;
+		string memory context = proof.claimInfo.context;
 		return StringUtils.substring(context, 0, 42);
 	}
 
@@ -190,23 +184,23 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * Call the function to assert
 	 * the validity of several claims proofs
 	 */
-	function verifyProof(SuperProof memory superProof) public view {
+	function verifyProof(Proof memory proof) public view {
 		// create signed claim using claimData and signature.
-		require(superProof.signedClaim.signatures.length > 0, "No signatures");
+		require(proof.signedClaim.signatures.length > 0, "No signatures");
 		Claims.SignedClaim memory signed = Claims.SignedClaim(
-			superProof.signedClaim.claim,
-			superProof.signedClaim.signatures
+			proof.signedClaim.claim,
+			proof.signedClaim.signatures
 		);
 
 		// check if the hash from the claimInfo is equal to the infoHash in the claimData
-		bytes32 hashed = Claims.hashClaimInfo(superProof.claimInfo);
-		require(superProof.signedClaim.claim.identifier == hashed);
+		bytes32 hashed = Claims.hashClaimInfo(proof.claimInfo);
+		require(proof.signedClaim.claim.identifier == hashed);
 
 		// fetch witness list from fetchEpoch(_epoch).witnesses
 		Witness[] memory expectedWitnesses = fetchWitnessesForClaim(
-			superProof.signedClaim.claim.epoch,
-			superProof.signedClaim.claim.identifier,
-			superProof.signedClaim.claim.timestampS
+			proof.signedClaim.claim.epoch,
+			proof.signedClaim.claim.identifier,
+			proof.signedClaim.claim.timestampS
 		);
 		address[] memory signedWitnesses = Claims.recoverSignersOfSignedClaim(signed);
 		// check if the number of signatures is equal to the number of witnesses
@@ -230,12 +224,9 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		//@TODO: verify zkproof
 	}
 
-	function merkelizeUser(
-		SuperProof memory superProof,
-		uint256 _identityCommitment
-	) external {
-		verifyProof(superProof);
-		uint256 groupId = calculateGroupIdFromProvider(superProof.claimInfo.provider);
+	function merkelizeUser(Proof memory proof, uint256 _identityCommitment) external {
+		verifyProof(proof);
+		uint256 groupId = calculateGroupIdFromProvider(proof.claimInfo.provider);
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
 	}
 
@@ -260,7 +251,10 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	/**
 	 * @dev Add a new epoch
 	 */
-	function addNewEpoch() external onlyOwner {
+	function addNewEpoch(
+		Witness[] calldata witnesses,
+		uint8 requisiteWitnessesForClaimCreate
+	) external onlyOwner {
 		if (epochDurationS == 0) {
 			epochDurationS = 1 days;
 		}
@@ -274,54 +268,11 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 				currentEpoch,
 				uint32(block.timestamp),
 				uint32(block.timestamp + epochDurationS),
-				randomiseWitnessList(currentEpoch),
-				requisiteWitnessesForClaimCreate()
+				witnesses,
+				requisiteWitnessesForClaimCreate
 			)
 		);
 		emit EpochAdded(epochs[epochs.length - 1]);
-	}
-
-	// witness functions ---
-
-	/**
-	 * @dev Remove the sender from the list of witnesses
-	 * @notice any pending requests with this witness will continue to be processed
-	 * However, no new requests will be assigned to this witness
-	 */
-	function removeAsWitness(address witnessAddress) external {
-		require(
-			msg.sender == owner() || msg.sender == witnessAddress,
-			"Only owner or witness can remove itself"
-		);
-
-		for (uint256 i = 0; i < witnesses.length; i++) {
-			if (witnesses[i].addr == witnessAddress) {
-				witnesses[i] = witnesses[witnesses.length - 1];
-				witnesses.pop();
-				return;
-			}
-		}
-
-		revert("Not an witness");
-	}
-
-	/**
-	 * @dev Add the given address as an witness to the list of witnesses
-	 * @param witnessAddress address of the witness
-	 * @param host host:port of the witness (must be grpc-web compatible)
-	 */
-	function addAsWitness(address witnessAddress, string calldata host) external {
-		require(
-			canAddAsWitness(witnessAddress) &&
-				(msg.sender == owner() || witnessAddress == msg.sender),
-			"Only owner or the whitelisted wallet can add an witness"
-		);
-
-		for (uint256 i = 0; i < witnesses.length; i++) {
-			require(witnesses[i].addr != witnessAddress, "Witness already exists");
-		}
-
-		witnesses.push(Witness(witnessAddress, host));
 	}
 
 	// admin functions ---
@@ -339,86 +290,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		emit GroupCreated(groupId, provider);
 	}
 
-	function updateWitnessWhitelist(address addr, bool isWhitelisted) external onlyOwner {
-		if (isWhitelisted) {
-			witnessWhitelistMap[addr] = true;
-		} else {
-			delete witnessWhitelistMap[addr];
-		}
-	}
-
 	// internal code -----
-
-	/**
-	 * @dev Pick a random set of witnesses from the available list of witnesses
-	 * @param witnessAddresses Array to store the addresses of the witnesses
-	 * @return Array of the hosts of the witnesses
-	 */
-	function pickRandomWitnesses(
-		address[] storage witnessAddresses,
-		uint256 seed
-	) internal returns (string[] memory) {
-		require(
-			witnessAddresses.length <= witnesses.length,
-			"Internal Error, Not Enough Witnesses"
-		);
-		Witness[] memory tempWitnesses = witnesses;
-		uint256 witnessesLeft = tempWitnesses.length;
-
-		string[] memory witnessHosts = new string[](witnessAddresses.length);
-		for (uint8 i = 0; i < witnessAddresses.length; i++) {
-			uint256 idx = Random.random(seed + i) % witnessesLeft;
-			witnessAddresses[i] = tempWitnesses[idx].addr;
-			witnessHosts[i] = tempWitnesses[idx].host;
-
-			// we've utilised witness at index "idx"
-			// we of course don't want to pick the same witness twice
-			// so we remove it from the list of witnesses
-			// and reduce the number of witnesses left to pick from
-			// since solidity doesn't support "pop()" in memory arrays
-			// we swap the last element with the element we want to remove
-			tempWitnesses[idx] = tempWitnesses[witnessesLeft - 1];
-			witnessesLeft -= 1;
-		}
-		return witnessHosts;
-	}
-
-	/**
-	 * @dev Randomises the list of witnesses
-	 */
-	function randomiseWitnessList(uint256 seed) internal view returns (Witness[] memory) {
-		Witness[] memory tempWitnesses = witnesses;
-		Witness[] memory result = new Witness[](witnesses.length);
-		uint256 witnessesLeft = tempWitnesses.length;
-
-		for (uint8 i = 0; i < witnesses.length; i++) {
-			uint256 idx = Random.random(seed + i) % witnessesLeft;
-			result[i] = tempWitnesses[idx];
-
-			// we've utilised witness at index "idx"
-			// we of course don't want to pick the same witness twice
-			// so we remove it from the list of witnesses
-			// and reduce the number of witnesses left to pick from
-			// since solidity doesn't support "pop()" in memory arrays
-			// we swap the last element with the element we want to remove
-			tempWitnesses[idx] = tempWitnesses[witnessesLeft - 1];
-			witnessesLeft -= 1;
-		}
-		return result;
-	}
-
-	/**
-	 * @dev Get the number of witnesses required to create a claim
-	 */
-	function requisiteWitnessesForClaimCreate() internal view returns (uint8) {
-		// at least N witnesses are required
-		// or the number of witnesses registered, whichever is lower
-		return uint8(Math.min(minimumWitnessesForClaimCreation, witnesses.length));
-	}
-
-	function canAddAsWitness(address addr) internal view returns (bool) {
-		return witnessWhitelistMap[addr];
-	}
 
 	function uintDifference(uint256 a, uint256 b) internal pure returns (uint256) {
 		if (a > b) {
