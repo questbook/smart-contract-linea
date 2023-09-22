@@ -13,6 +13,7 @@ import "./lib/BytesUtils.sol";
 // import "hardhat/console.sol";
 
 error Reclaim__GroupAlreadyExists();
+error Reclaim__UserAlreadyMerkelized();
 
 /**
  * Reclaim Beacon contract
@@ -71,9 +72,21 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * */
 	mapping(uint256 => bool) createdGroups;
 
+	mapping(uint256 => mapping(string => bool)) isUserMerkelized;
+
 	event EpochAdded(Epoch epoch);
 
 	event GroupCreated(uint256 indexed groupId, string indexed provider);
+
+	bool internal locked;
+
+	// Modifiers
+	modifier noReentrant() {
+		require(!locked, "No re-entrancy");
+		locked = true;
+		_;
+		locked = false;
+	}
 
 	/**
 	 * @notice Calls initialize on the base contracts
@@ -183,7 +196,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 */
 	function getContextAddressFromProof(
 		Proof memory proof
-	) external pure returns (string memory) {
+	) public pure returns (string memory) {
 		string memory context = proof.claimInfo.context;
 		return StringUtils.substring(context, 0, 42);
 	}
@@ -249,13 +262,21 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		emit GroupCreated(groupId, provider);
 	}
 
-	function merkelizeUser(Proof memory proof, uint256 _identityCommitment) external {
-		verifyProof(proof);
+	function merkelizeUser(
+		Proof memory proof,
+		uint256 _identityCommitment
+	) external noReentrant {
 		uint256 groupId = calculateGroupIdFromProvider(proof.claimInfo.provider);
+		string memory contextAddress = getContextAddressFromProof(proof);
+		if (isUserMerkelized[groupId][contextAddress] == true) {
+			revert Reclaim__UserAlreadyMerkelized();
+		}
+		verifyProof(proof);
 		if (createdGroups[groupId] != true) {
 			createGroup(proof.claimInfo.provider, 20);
 		}
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
+		isUserMerkelized[groupId][contextAddress] = true;
 	}
 
 	function verifyMerkelIdentity(
