@@ -8,7 +8,7 @@ import {
 import { Identity } from "@semaphore-protocol/identity";
 import { Group } from "@semaphore-protocol/group";
 import { generateProof } from "@semaphore-protocol/proof";
-import { expect } from "chai";
+import { expect, use } from "chai";
 import { Wallet, utils } from "ethers";
 import { Reclaim, Semaphore } from "../src/types";
 import {
@@ -77,52 +77,93 @@ describe("Reclaim Tests", () => {
     );
   });
 
+  it("should fail to create group with Reclaim__GroupAlreadyExists error", async () => {
+    let { contract } = await loadFixture(deployFixture);
+    expect(await contract.createGroup("test", 18)).to.emit(
+      contract,
+      "GroupCreated"
+    );
+
+    expect(contract.createGroup("test", 18)).to.be.revertedWith(
+      "Reclaim__GroupAlreadyExists"
+    );
+  });
   describe("Proofs tests", async () => {
     async function proofsFixture() {
       let { contract, witnesses, owner, semaphore, witnessesWallets } =
         await loadFixture(deployFixture);
+
       let superProofs;
       let user = await randomWallet(40);
-      const provider = "uid-dob";
-      const parameters = '{"dob":"0000-00-00"}';
-      const context = randomEthAddress() + "some-application-specific-context";
-
-      const claimInfo = { provider, parameters, context };
-      const infoHash = hashClaimInfo(claimInfo);
-
       await contract.addNewEpoch(witnesses, 5);
       const currentEpoch = await contract.currentEpoch();
-
       const timestampS = Math.floor(Date.now() / 1000);
 
-      const claimData: CompleteClaimData = {
-        identifier: infoHash,
-        owner: user.address,
-        timestampS,
-        epoch: currentEpoch,
+      const createClaimInfo = () => {
+        const provider = "uid-dob";
+        const parameters = '{"dob":"0000-00-00"}';
+        const context =
+          randomEthAddress() + "some-application-specific-context";
+        return { provider, parameters, context };
       };
 
-      const claimDataStr = createSignDataForClaim(claimData);
-      const signatures = await Promise.all(
-        witnesses.map(async (w) => {
-          const addr = await w.addr;
-          return witnessesWallets[addr].signMessage(claimDataStr);
-        })
-      );
+      const createClaimData = (
+        claimInfo,
+        epoch,
+        address,
+        timestampS
+      ): CompleteClaimData => {
+        const infoHash = hashClaimInfo(claimInfo);
+        return {
+          identifier: infoHash,
+          owner: address,
+          timestampS,
+          epoch: epoch,
+        };
+      };
 
+      const generateSignatures = async (
+        claimData: CompleteClaimData,
+        witnesses,
+        witnessesWallets
+      ) => {
+        const claimDataStr = createSignDataForClaim(claimData);
+        const signatures = await Promise.all(
+          witnesses.map(async (w) => {
+            const addr = await w.addr;
+            return witnessesWallets[addr].signMessage(claimDataStr);
+          })
+        );
+        return signatures;
+      };
+
+      const claimInfos = await Promise.all([
+        createClaimInfo(),
+        createClaimInfo(),
+      ]);
+
+      const claimDatas = await Promise.all([
+        createClaimData(claimInfos[0], currentEpoch, user.address, timestampS),
+        createClaimData(claimInfos[1], currentEpoch, user.address, timestampS),
+      ]);
+
+      const signatureForEachClaim = await Promise.all([
+        generateSignatures(claimDatas[0], witnesses, witnessesWallets),
+        generateSignatures(claimDatas[1], witnesses, witnessesWallets),
+      ]);
       superProofs = [
         {
-          claimInfo,
+          claimInfo: claimInfos[0],
           signedClaim: {
-            signatures,
-            claim: claimData,
+            signatures: signatureForEachClaim[0],
+            claim: claimDatas[0],
           },
         },
         {
-          claimInfo,
+          claimInfo: claimInfos[1],
           signedClaim: {
-            signatures,
-            claim: claimData,
+            signatures: signatureForEachClaim[1],
+            claim: claimDatas[1],
           },
         },
       ];
@@ -180,20 +221,17 @@ describe("Reclaim Tests", () => {
     });
 
     it("should contract be admin, merkelize the user and verify merkle identity", async () => {
-      let { contract, superProofs, semaphore } = await loadFixture(
+      let { contract, superProofs, semaphore, witnesses } = await loadFixture(
         proofsFixture
       );
-
       // SemaphoreEthers obj to ease querying data from semaphore
       const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
         address: semaphore.address,
       });
       // init two identities
       const identity = new Identity();
-      const identitySec = new Identity();
 
       const member = identity.getCommitment().toString();
-      const memberSec = identitySec.getCommitment().toString();
 
       // Creating group and add member through recalim
       const tx = await contract.createGroup(
@@ -202,9 +240,12 @@ describe("Reclaim Tests", () => {
       );
       const txReceipt = await tx.wait(1);
 
-      await contract.merkelizeUser(superProofs[1], member);
-      await contract.merkelizeUser(superProofs[0], memberSec);
+      const txMerkelizeFirstUser = await contract.merkelizeUser(
+        superProofs[1],
+        member
+      );
 
+      await txMerkelizeFirstUser.wait();
       // get groupId from events
       let groupId;
       if (
@@ -213,10 +254,8 @@ describe("Reclaim Tests", () => {
       ) {
         groupId = txReceipt.events[2].args[0].toString();
       }
-
       let group = new Group(groupId);
       group.addMember(member);
-
       const admin = await semaphoreEthers.getGroupAdmin(groupId);
       const memberFromSemaphore = await semaphoreEthers.getGroupMembers(
         groupId
@@ -258,6 +297,22 @@ describe("Reclaim Tests", () => {
       const member = identity.getCommitment().toString();
       const tx = await contract.merkelizeUser(superProofs[1], member);
       expect(tx).to.emit(contract, "GroupCreated");
+    });
+
+    it("should fail to merkelize the user twice with UserAlreadyMerkelized error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const identity = new Identity();
+      const member = identity.getCommitment().toString();
+      const tx = await contract.merkelizeUser(superProofs[1], member);
+
+      await expect(
+        contract.merkelizeUser(superProofs[1], member)
+      ).to.be.revertedWithCustomError(
+        contract,
+        "Reclaim__UserAlreadyMerkelized"
+      );
     });
 
     it("should fail to merkelize user with no signatures error", async () => {
