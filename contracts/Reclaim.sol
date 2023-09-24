@@ -200,14 +200,14 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		string memory context = proof.claimInfo.context;
 		return StringUtils.substring(context, 0, 42);
 	}
-	
-	function getIsUserMerkelized (
+
+	function getIsUserMerkelized(
 		uint256 groupId,
-		address userAddress
-		
-	) public pure returns (bool memory) {
+		string memory userAddress
+	) public view returns (bool) {
 		return isUserMerkelized[groupId][userAddress];
 	}
+
 	/**
 	 * Call the function to assert
 	 * the validity of several claims proofs
@@ -321,15 +321,16 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		}
 
 		currentEpoch += 1;
-		epochs.push(
-			Epoch(
-				currentEpoch,
-				uint32(block.timestamp),
-				uint32(block.timestamp + epochDurationS),
-				witnesses,
-				requisiteWitnessesForClaimCreate
-			)
-		);
+		Epoch storage epoch = epochs.push();
+		epoch.id = currentEpoch;
+		epoch.timestampStart = uint32(block.timestamp);
+		epoch.timestampEnd = uint32(block.timestamp + epochDurationS);
+		epoch.minimumWitnessesForClaimCreation = requisiteWitnessesForClaimCreate;
+
+		for (uint256 i = 0; i < witnesses.length; i++) {
+			epoch.witnesses.push(witnesses[i]);
+		}
+
 		emit EpochAdded(epochs[epochs.length - 1]);
 	}
 

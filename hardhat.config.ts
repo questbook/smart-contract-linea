@@ -10,7 +10,7 @@ import "./tasks";
 
 const { PRIVATE_KEY, ALCHEMY_API_KEY, NETWORK } = process.env;
 const hasCustomNetwork = NETWORK && NETWORK !== "hardhat";
-
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY || "";
 if (hasCustomNetwork) {
   if (!PRIVATE_KEY) {
     throw new Error("PRIVATE_KEY not set");
@@ -27,7 +27,7 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.4",
     settings: {
-      viaIR: true,
+      viaIR: false,
       optimizer: {
         enabled: true,
         runs: 200,
@@ -37,30 +37,46 @@ const config: HardhatUserConfig = {
   defaultNetwork: NETWORK,
   networks: {
     hardhat: {
-      // forking: {
-      //   url: "https://eth-sepolia.g.alchemy.com/v2/" + ALCHEMY_API_KEY,
-      //   blockNumber: 3231111,
-      // },
       gas: 2100000,
       gasPrice: 8000000000,
     },
-    ...(hasCustomNetwork
-      ? {
-          [NETWORK]: {
-            url: API_TEMPLATE.replace("{{network}}", NETWORK).replace(
-              "{{key}}",
-              ALCHEMY_API_KEY!
-            ),
-            // uncomment to make tx go faster
-            // gasPrice: 450000000000,
-            accounts: [PRIVATE_KEY],
-          },
-        }
-      : {}),
+    linea_testnet: {
+      url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      accounts: [process.env.PRIVATE_KEY!],
+      // gasPrice: 450000000000,
+    },
+    // ...(hasCustomNetwork
+    //   ? {
+    //       [NETWORK]: {
+    //         url: API_TEMPLATE.replace("{{network}}", NETWORK).replace(
+    //           "{{key}}",
+    //           ALCHEMY_API_KEY!
+    //         ),
+    //         // uncomment to make tx go faster
+    //         // gasPrice: 450000000000,
+    //         accounts: [PRIVATE_KEY],
+    //       },
+    //     }
+    //   : {}),
   },
   typechain: {
     outDir: "src/types",
     target: "ethers-v5",
+  },
+  etherscan: {
+    apiKey: {
+      linea_testnet: process.env.LINEASCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "linea_testnet",
+        chainId: 59140,
+        urls: {
+          apiURL: "https://explorer.goerli.linea.build/api",
+          browserURL: "https://explorer.goerli.linea.build",
+        },
+      },
+    ],
   },
 };
 
