@@ -200,7 +200,14 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		string memory context = proof.claimInfo.context;
 		return StringUtils.substring(context, 0, 42);
 	}
-
+	
+	function getIsUserMerkelized (
+		uint256 groupId,
+		address userAddress
+		
+	) public pure returns (bool memory) {
+		return isUserMerkelized[groupId][userAddress]
+	}
 	/**
 	 * Call the function to assert
 	 * the validity of several claims proofs
