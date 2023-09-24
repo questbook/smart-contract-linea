@@ -206,7 +206,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		address userAddress
 		
 	) public pure returns (bool memory) {
-		return isUserMerkelized[groupId][userAddress]
+		return isUserMerkelized[groupId][userAddress];
 	}
 	/**
 	 * Call the function to assert
