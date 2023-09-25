@@ -9,8 +9,8 @@ import { Identity } from "@semaphore-protocol/identity";
 import { Group } from "@semaphore-protocol/group";
 import { generateProof } from "@semaphore-protocol/proof";
 import { expect } from "chai";
-import { Wallet, utils } from "ethers";
-import { Reclaim, Semaphore } from "../src/types";
+import { utils } from "ethers";
+import { Reclaim } from "../src/types";
 import {
   deployReclaimContract,
   generateMockWitnessesList,
@@ -18,10 +18,9 @@ import {
   randomWallet,
   randomiseWitnessList,
 } from "./utils";
-import { ethers, network, run } from "hardhat";
+import { ethers, run } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { SemaphoreEthers } from "@semaphore-protocol/data";
 import { randomBytes } from "crypto";
 
 describe("Reclaim Tests", () => {
@@ -224,14 +223,6 @@ describe("Reclaim Tests", () => {
       let { contract, superProofs, semaphore, witnesses } = await loadFixture(
         proofsFixture
       );
-      // SemaphoreEthers obj to ease querying data from semaphore
-      const semaphoreEthers = new SemaphoreEthers("http://localhost:8545", {
-        address: semaphore.address,
-      });
-      // init two identities
-      const identity = new Identity();
-
-      const member = identity.getCommitment().toString();
 
       // Creating group and add member through recalim
       const tx = await contract.createGroup(
@@ -239,14 +230,6 @@ describe("Reclaim Tests", () => {
         20
       );
       const txReceipt = await tx.wait(1);
-
-      const txMerkelizeFirstUser = await contract.merkelizeUser(
-        superProofs[1],
-        member
-      );
-
-      await txMerkelizeFirstUser.wait();
-      // get groupId from events
       let groupId;
       if (
         txReceipt.events !== undefined &&
@@ -254,18 +237,23 @@ describe("Reclaim Tests", () => {
       ) {
         groupId = txReceipt.events[2].args[0].toString();
       }
-      let group = new Group(groupId);
-      group.addMember(member);
-      const admin = await semaphoreEthers.getGroupAdmin(groupId);
-      const memberFromSemaphore = await semaphoreEthers.getGroupMembers(
-        groupId
-      );
 
-      expect(memberFromSemaphore[0]).to.equal(member);
+      const identity = new Identity();
+      const member = identity.getCommitment().toString();
+      const txMerkelizeFirstUser = await contract.merkelizeUser(
+        superProofs[1],
+        member
+      );
+      await txMerkelizeFirstUser.wait();
+      await expect(txMerkelizeFirstUser).to.emit(semaphore, "MemberAdded");
+
+      const admin = (await semaphore.groups(groupId)).admin;
       expect(contract.address).to.equal(admin);
 
-      const signal = utils.formatBytes32String("Hellox");
+      let group = new Group(groupId);
+      group.addMember(member);
 
+      const signal = utils.formatBytes32String("Hellox");
       const id = group.root;
       const createDappTranactionResponse = await contract.createDapp(id);
       expect(createDappTranactionResponse).to.emit(contract, "DappCreated");

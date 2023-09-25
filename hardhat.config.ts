@@ -36,10 +36,7 @@ const config: HardhatUserConfig = {
   },
   defaultNetwork: NETWORK,
   networks: {
-    hardhat: {
-      gas: 2100000,
-      gasPrice: 8000000000,
-    },
+    hardhat: {},
     linea_testnet: {
       url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: [process.env.PRIVATE_KEY!],
