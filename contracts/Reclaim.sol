@@ -72,7 +72,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * */
 	mapping(uint256 => bool) createdGroups;
 
-	mapping(uint256 => mapping(string => bool)) isUserMerkelized;
+	mapping(bytes32 => bool) merkelizedUserParams;
 
 	mapping(bytes32 => uint256) dappIdToExternalNullifier;
 
@@ -212,11 +212,12 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		return StringUtils.substring(context, 0, 42);
 	}
 
-	function getIsUserMerkelized(
-		uint256 groupId,
-		string memory userAddress
-	) public view returns (bool) {
-		return isUserMerkelized[groupId][userAddress];
+	function getMerkelizedUserParams(
+		string memory provider,
+		string memory params
+	) external returns (bool) {
+		bytes32 userParamsHash = calculateUserParamsHash(provider, params);
+		return merkelizedUserParams[userParamsHash];
 	}
 
 	/**
@@ -285,8 +286,11 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		uint256 _identityCommitment
 	) external noReentrant {
 		uint256 groupId = calculateGroupIdFromProvider(proof.claimInfo.provider);
-		string memory contextAddress = getContextAddressFromProof(proof);
-		if (isUserMerkelized[groupId][contextAddress] == true) {
+		bytes32 userParamsHash = calculateUserParamsHash(
+			proof.claimInfo.provider,
+			proof.claimInfo.parameters
+		);
+		if (merkelizedUserParams[userParamsHash] == true) {
 			revert Reclaim__UserAlreadyMerkelized();
 		}
 		verifyProof(proof);
@@ -294,7 +298,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			createGroup(proof.claimInfo.provider, 20);
 		}
 		SemaphoreInterface(semaphoreAddress).addMember(groupId, _identityCommitment);
-		isUserMerkelized[groupId][contextAddress] = true;
+		merkelizedUserParams[userParamsHash] = true;
 	}
 
 	function verifyMerkelIdentity(
@@ -373,5 +377,13 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 			hashedProvider.length - 4
 		);
 		return groupId;
+	}
+
+	function calculateUserParamsHash(
+		string memory provider,
+		string memory params
+	) internal returns (bytes32) {
+		bytes32 userParamsHash = keccak256(abi.encodePacked(provider, params));
+		return userParamsHash;
 	}
 }
