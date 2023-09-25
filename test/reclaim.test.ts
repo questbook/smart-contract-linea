@@ -8,7 +8,7 @@ import {
 import { Identity } from "@semaphore-protocol/identity";
 import { Group } from "@semaphore-protocol/group";
 import { generateProof } from "@semaphore-protocol/proof";
-import { expect, use } from "chai";
+import { expect } from "chai";
 import { Wallet, utils } from "ethers";
 import { Reclaim, Semaphore } from "../src/types";
 import {
@@ -220,7 +220,7 @@ describe("Reclaim Tests", () => {
       expect(providersMock.length).to.equal(groupIds.size);
     });
 
-    it("should contract be admin, merkelize the user and verify merkle identity", async () => {
+    it("should contract be admin, merkelize the user, create dapp and verify merkle identity", async () => {
       let { contract, superProofs, semaphore, witnesses } = await loadFixture(
         proofsFixture
       );
@@ -265,7 +265,17 @@ describe("Reclaim Tests", () => {
       expect(contract.address).to.equal(admin);
 
       const signal = utils.formatBytes32String("Hellox");
-      const fullProof = await generateProof(identity, group, groupId, signal, {
+
+      const id = group.root;
+      const createDappTranactionResponse = await contract.createDapp(id);
+      expect(createDappTranactionResponse).to.emit(contract, "DappCreated");
+
+      const createDappTransactionReceipt =
+        await createDappTranactionResponse.wait();
+
+      const dappId = createDappTransactionReceipt.events![0]!.args![0]!;
+
+      const fullProof = await generateProof(identity, group, id, signal, {
         zkeyFilePath: "./resources/semaphore.zkey",
         wasmFilePath: "./resources/semaphore.wasm",
       });
@@ -276,6 +286,7 @@ describe("Reclaim Tests", () => {
         fullProof.signal,
         fullProof.nullifierHash,
         fullProof.externalNullifier,
+        dappId,
         fullProof.proof
       );
       await expect(semaphoreTransaction)
@@ -284,7 +295,7 @@ describe("Reclaim Tests", () => {
           groupId,
           fullProof.merkleTreeRoot,
           fullProof.nullifierHash,
-          groupId,
+          fullProof.externalNullifier,
           fullProof.signal
         );
     });
@@ -312,6 +323,57 @@ describe("Reclaim Tests", () => {
       ).to.be.revertedWithCustomError(
         contract,
         "Reclaim__UserAlreadyMerkelized"
+      );
+    });
+    it("should fail to verifyMerkleIdentity with Dapp Not Created error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+
+      const identity = new Identity();
+      const member = identity.getCommitment().toString();
+
+      // Creating group and add member through recalim
+      const tx = await contract.createGroup(
+        superProofs[1].claimInfo.provider,
+        20
+      );
+      const txReceipt = await tx.wait(1);
+      const txMerkelize = await contract.merkelizeUser(superProofs[1], member);
+      await txMerkelize.wait();
+
+      // get groupId from events
+      let groupId = txReceipt.events![2]!.args![0]!.toString();
+
+      let group = new Group(groupId);
+      group.addMember(member);
+
+      const signal = utils.formatBytes32String("Hellox");
+
+      const fullProof = await generateProof(
+        identity,
+        group,
+        group.root,
+        signal,
+        {
+          zkeyFilePath: "./resources/semaphore.zkey",
+          wasmFilePath: "./resources/semaphore.wasm",
+        }
+      );
+
+      const verifyMerkelIdentityTransactionPromise =
+        contract.verifyMerkelIdentity(
+          groupId,
+          fullProof.merkleTreeRoot,
+          fullProof.signal,
+          fullProof.nullifierHash,
+          fullProof.externalNullifier,
+          groupId,
+          fullProof.proof
+        );
+
+      expect(verifyMerkelIdentityTransactionPromise).to.be.revertedWith(
+        "Dapp Not Created"
       );
     });
 
@@ -367,6 +429,20 @@ describe("Reclaim Tests", () => {
 
       expect(contract.merkelizeUser(superProofs[1], member)).to.be.revertedWith(
         "Signature not appropriate"
+      );
+    });
+
+    it("should fail to create dapp with Dapp Already Exists error", async () => {
+      let { contract, superProofs, semaphore } = await loadFixture(
+        proofsFixture
+      );
+      const proposedDappId = Math.floor(Math.random() * 6) + 1;
+      const createDappTranactionResponse = await contract.createDapp(
+        proposedDappId
+      );
+
+      expect(contract.createDapp(proposedDappId)).to.be.revertedWith(
+        "Dapp Already Exists"
       );
     });
   });

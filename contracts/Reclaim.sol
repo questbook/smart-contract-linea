@@ -74,9 +74,13 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
 	mapping(uint256 => mapping(string => bool)) isUserMerkelized;
 
+	mapping(bytes32 => uint256) dappIdToExternalNullifier;
+
 	event EpochAdded(Epoch epoch);
 
 	event GroupCreated(uint256 indexed groupId, string indexed provider);
+
+	event DappCreated(bytes32 indexed dappId);
 
 	bool internal locked;
 
@@ -170,6 +174,13 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		}
 
 		return selectedWitnesses;
+	}
+
+	function createDapp(uint256 id) external {
+		bytes32 dappId = keccak256(abi.encodePacked(msg.sender, id));
+		require(dappIdToExternalNullifier[dappId] != id, "Dapp Already Exists");
+		dappIdToExternalNullifier[dappId] = id;
+		emit DappCreated(dappId);
 	}
 
 	/**
@@ -292,8 +303,13 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 		uint256 _signal,
 		uint256 _nullifierHash,
 		uint256 _externalNullifier,
+		bytes32 dappId,
 		uint256[8] calldata _proof
 	) external {
+		require(
+			dappIdToExternalNullifier[dappId] == _externalNullifier,
+			"Dapp Not Created"
+		);
 		SemaphoreInterface(semaphoreAddress).verifyProof(
 			groupId,
 			_merkleTreeRoot,
