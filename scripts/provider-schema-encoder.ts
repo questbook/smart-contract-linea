@@ -23,7 +23,7 @@ function getProvidersExamplesObjects(directory: string): Provider[] {
 }
 
 function buildProperty(name: string, type: string, value?: any) {
-  if (type === "number") type = "uint256";
+  if (type === "number") type = "int256";
 
   if (value instanceof Array) {
     if (typeof value[0] === "object")
@@ -33,6 +33,9 @@ function buildProperty(name: string, type: string, value?: any) {
   }
 
   if (type === "object") {
+    if (Object.values(value).length == 0) {
+      return `mapping(string => string) ${name}`;
+    }
     return `${name} { ${encodeProviderParamsForVerax(value)} }`;
   }
 

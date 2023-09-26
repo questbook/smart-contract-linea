@@ -1,74 +1,88 @@
 [
   { "name": "amazon-order-history", "schema": "string productName" },
   {
-    "name": "amazon-order-history",
-    "schema": "string url, string method, responseSelection[] { string xPath, string responseMatch }"
-  },
-  {
     "name": "binance-asset-balance",
     "schema": "string assetName, string assetQty"
   },
-  { "name": "blind-user", "schema": "string url, string method" },
-  { "name": "bybit-balance", "schema": "uint256 balance" },
-  { "name": "bybit-spot-pnl", "schema": "uint256 profitPercentage" },
-  { "name": "chess-rating", "schema": "string url, string method" },
-  { "name": "chess-user", "schema": "string url, string method" },
+  { "name": "blind-user", "schema": "string userName" },
+  { "name": "bybit-balance", "schema": "int256 balance" },
+  { "name": "bybit-spot-pnl", "schema": "int256 profitPercentage" },
+  { "name": "chess-rating", "schema": "string userName, string rating" },
+  { "name": "chess-user", "schema": "string userName" },
   { "name": "codeforces-rating", "schema": "string rating" },
-  { "name": "coindcx-balance", "schema": "string assetName, uint256 balance" },
-  { "name": "coinswitch-balance", "schema": "uint256 balance" },
+  { "name": "coindcx-balance", "schema": "string assetName, int256 balance" },
+  { "name": "coinswitch-balance", "schema": "int256 balance" },
   {
     "name": "devfolio-hackathon-participated",
-    "schema": "string username, uint256 hackathonCount"
+    "schema": "string username, int256 hackathonCount"
   },
+  { "name": "ebay-user", "schema": "string username" },
   {
     "name": "facebook-friends-count",
-    "schema": "string userURL, uint256 friendsCount"
+    "schema": "string userURL, int256 friendsCount"
   },
-  { "name": "flickr-user", "schema": "string url, string method" },
+  { "name": "flickr-user", "schema": "string userEmail" },
   {
     "name": "github-commits",
-    "schema": "string repository, searchQuery { undefined[] keywords, qualifiers { string[] is } }, string type"
+    "schema": "string repository, searchQuery { string[] keywords, qualifiers { string[] is } }, string type"
   },
   {
     "name": "github-topics",
-    "schema": "string path, qs {  }, string type, response { string[] names }, string[] keys"
+    "schema": "string path, mapping(string => string) qs, string type, response { string[] names }, string[] keys"
   },
+  { "name": "goibibo", "schema": "string goTribeDetails" },
   {
     "name": "groww-stock-balance",
-    "schema": "string stockIsin, uint256 stockQty"
+    "schema": "string stockIsin, int256 stockQty"
   },
+  { "name": "hackerearth-username", "schema": "string userName" },
   { "name": "hackerrank-username", "schema": "string userName" },
-  { "name": "instagram-user", "schema": "string url, string method" },
+  {
+    "name": "http-provider",
+    "schema": "string url, string method, responseSelection[] { string xPath, string responseMatch }"
+  },
+  { "name": "instagram-posts", "schema": "string[] igCDNFileNames" },
+  { "name": "instagram-user", "schema": "string userName" },
   { "name": "irs-address", "schema": "string address" },
   { "name": "irs-name", "schema": "string name" },
   { "name": "lichess-username", "schema": "string username" },
   { "name": "loom-user-id", "schema": "string userId" },
+  { "name": "mastodon-user", "schema": "string username" },
   {
     "name": "medium-followers-count",
-    "schema": "string username, uint256 followersCount"
+    "schema": "string username, int256 followersCount"
   },
   { "name": "notion-username", "schema": "string userName" },
-  { "name": "one-mg", "schema": "undefined[] data, queryString {  }" },
+  {
+    "name": "one-mg",
+    "schema": "mapping(string => string) data, mapping(string => string) queryString"
+  },
   { "name": "proton-mail", "schema": "string email" },
   { "name": "quora-user", "schema": "string userId" },
   { "name": "soundcloud-username", "schema": "string username" },
-  { "name": "swiggy-total-count", "schema": "uint256 orderCount" },
+  { "name": "spotify-account-type", "schema": "int256 accountType" },
+  { "name": "spotify-account-type", "schema": "int256 accountType" },
+  { "name": "spotify-username", "schema": "string userName" },
+  { "name": "swiggy-total-count", "schema": "int256 orderCount" },
   {
     "name": "tinder-match-count",
-    "schema": "uint256 matchCount, string userId"
+    "schema": "int256 matchCount, string userId"
   },
-  { "name": "tumblr-follower", "schema": "string url, string method" },
-  { "name": "uidai-aadhar", "schema": "string name" },
+  { "name": "tumblr-follower", "schema": "string followingAccount" },
+  { "name": "twitter-followers-count", "schema": "string numFollowers" },
+  { "name": "twitter-username", "schema": "string username" },
   { "name": "uidai-address", "schema": "string address" },
+  { "name": "uidai-address", "schema": "string address" },
+  { "name": "uidai-name", "schema": "string name" },
+  { "name": "uidai-phone", "schema": "string mobile" },
+  { "name": "uidai-stateName", "schema": "string stateName" },
+  { "name": "uidai-uid", "schema": "string uid" },
   { "name": "venmo-id", "schema": "string userId" },
   {
     "name": "venmo-transaction",
     "schema": "string userId, string recipientId, string amount"
   },
-  {
-    "name": "yc-login",
-    "schema": "string url, string method, responseSelection[] { string xPath, string jsonPath, string responseMatch }"
-  },
+  { "name": "yc-login", "schema": "int256 userId" },
   { "name": "zoho-email", "schema": "string email" },
-  { "name": "zomato-order-count", "schema": "string userId, string orderCount" }
+  { "name": "zomato-order-count", "schema": "string userId, int256 orderCount" }
 ]
