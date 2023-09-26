@@ -1,0 +1,74 @@
+[
+  { "name": "amazon-order-history", "schema": "string productName" },
+  {
+    "name": "amazon-order-history",
+    "schema": "string url, string method, responseSelection[] { string xPath, string responseMatch }"
+  },
+  {
+    "name": "binance-asset-balance",
+    "schema": "string assetName, string assetQty"
+  },
+  { "name": "blind-user", "schema": "string url, string method" },
+  { "name": "bybit-balance", "schema": "uint256 balance" },
+  { "name": "bybit-spot-pnl", "schema": "uint256 profitPercentage" },
+  { "name": "chess-rating", "schema": "string url, string method" },
+  { "name": "chess-user", "schema": "string url, string method" },
+  { "name": "codeforces-rating", "schema": "string rating" },
+  { "name": "coindcx-balance", "schema": "string assetName, uint256 balance" },
+  { "name": "coinswitch-balance", "schema": "uint256 balance" },
+  {
+    "name": "devfolio-hackathon-participated",
+    "schema": "string username, uint256 hackathonCount"
+  },
+  {
+    "name": "facebook-friends-count",
+    "schema": "string userURL, uint256 friendsCount"
+  },
+  { "name": "flickr-user", "schema": "string url, string method" },
+  {
+    "name": "github-commits",
+    "schema": "string repository, searchQuery { undefined[] keywords, qualifiers { string[] is } }, string type"
+  },
+  {
+    "name": "github-topics",
+    "schema": "string path, qs {  }, string type, response { string[] names }, string[] keys"
+  },
+  {
+    "name": "groww-stock-balance",
+    "schema": "string stockIsin, uint256 stockQty"
+  },
+  { "name": "hackerrank-username", "schema": "string userName" },
+  { "name": "instagram-user", "schema": "string url, string method" },
+  { "name": "irs-address", "schema": "string address" },
+  { "name": "irs-name", "schema": "string name" },
+  { "name": "lichess-username", "schema": "string username" },
+  { "name": "loom-user-id", "schema": "string userId" },
+  {
+    "name": "medium-followers-count",
+    "schema": "string username, uint256 followersCount"
+  },
+  { "name": "notion-username", "schema": "string userName" },
+  { "name": "one-mg", "schema": "undefined[] data, queryString {  }" },
+  { "name": "proton-mail", "schema": "string email" },
+  { "name": "quora-user", "schema": "string userId" },
+  { "name": "soundcloud-username", "schema": "string username" },
+  { "name": "swiggy-total-count", "schema": "uint256 orderCount" },
+  {
+    "name": "tinder-match-count",
+    "schema": "uint256 matchCount, string userId"
+  },
+  { "name": "tumblr-follower", "schema": "string url, string method" },
+  { "name": "uidai-aadhar", "schema": "string name" },
+  { "name": "uidai-address", "schema": "string address" },
+  { "name": "venmo-id", "schema": "string userId" },
+  {
+    "name": "venmo-transaction",
+    "schema": "string userId, string recipientId, string amount"
+  },
+  {
+    "name": "yc-login",
+    "schema": "string url, string method, responseSelection[] { string xPath, string jsonPath, string responseMatch }"
+  },
+  { "name": "zoho-email", "schema": "string email" },
+  { "name": "zomato-order-count", "schema": "string userId, string orderCount" }
+]
