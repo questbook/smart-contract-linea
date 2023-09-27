@@ -6,6 +6,8 @@ import {AttestationPayload} from "./types/Structs.sol";
 import {Reclaim} from "../Reclaim.sol";
 import "../lib/StringUtils.sol";
 
+// import "hardhat/console.sol";
+
 contract UserMerkelizerModule is AbstractModule {
 	Reclaim private reclaim;
 
@@ -24,8 +26,9 @@ contract UserMerkelizerModule is AbstractModule {
 			(Reclaim.Proof, uint256)
 		);
 		string memory subject = StringUtils.bytes2str(attestationPayload.subject);
-		string memory contextAddress = reclaim.getContextAddressFromProof(proof);
-
+		string memory contextAddress = StringUtils.toLower(
+			reclaim.getContextAddressFromProof(proof)
+		);
 		require(
 			StringUtils.areEqual(subject, contextAddress),
 			"subject or contextAddress is invalid"

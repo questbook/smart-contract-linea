@@ -3,7 +3,6 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Reclaim } from "../src/types";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { VeraxRegisteries } from "../types";
-import { registerSchema } from "./utils";
 
 import {
   deployReclaimContract,
@@ -45,10 +44,10 @@ export async function proofsFixture() {
   const currentEpoch = await contract.currentEpoch();
   const timestampS = Math.floor(Date.now() / 1000);
 
-  const createClaimInfo = () => {
+  const createClaimInfo = (contextAddress) => {
     const provider = "uid-dob";
     const parameters = '{"dob":"0000-00-00"}';
-    const context = randomEthAddress() + "some-application-specific-context";
+    const context = contextAddress + "some-application-specific-context";
     return { provider, parameters, context };
   };
 
@@ -82,7 +81,11 @@ export async function proofsFixture() {
     return signatures;
   };
 
-  const claimInfos = await Promise.all([createClaimInfo(), createClaimInfo()]);
+  const signers = await ethers.getSigners();
+  const claimInfos = await Promise.all([
+    createClaimInfo(signers[0].address),
+    createClaimInfo(signers[1].address),
+  ]);
 
   const claimDatas = await Promise.all([
     createClaimData(claimInfos[0], currentEpoch, user.address, timestampS),
@@ -155,10 +158,6 @@ export async function veraxFixture() {
     "Reclaim"
   );
 
-  await registerSchema(schemaRegistry, "uid-dob", "string dob");
-
-  const schemaId = await schemaRegistry.getIdFromSchemaString("string dob");
-
   return {
     contract,
     witnesses,
@@ -173,6 +172,5 @@ export async function veraxFixture() {
     schemaRegistry,
     reclaimPortal,
     userMerkelizerModule,
-    schemaId,
   };
 }
