@@ -1,29 +1,17 @@
 import { task } from "hardhat/config";
+import verify from "../scripts/verify";
+import { ReturnObjectSemaphoreDeployTask } from "../types";
 
-const verify = async (contractAddress: string, args?: any[]) => {
-  console.log("Verifying contract...");
-  try {
-    await run("verify:verify", {
-      address: contractAddress,
-      constructorArguments: args,
-    });
-  } catch (e: any) {
-    if (e.message.toLowerCase().includes("already verified")) {
-      console.log("Already verified!");
-    } else {
-      console.log(e);
-    }
-  }
-};
-
-task("deploy").setAction(async ({}, { ethers, upgrades }) => {
+task("deploy").setAction(async ({}, { ethers, network, upgrades }) => {
   const {
     semaphore,
     pairingAddress,
     semaphoreVerifierAddress,
     poseidonAddress,
     incrementalBinaryTreeAddress,
-  } = await run("deploy:semaphore");
+  } = // @ts-expect-error events
+    (await run("deploy:semaphore")) as ReturnObjectSemaphoreDeployTask;
+
   const ReclaimFactory = await ethers.getContractFactory("Reclaim");
   const Reclaim = await upgrades.deployProxy(
     ReclaimFactory,
@@ -40,11 +28,9 @@ task("deploy").setAction(async ({}, { ethers, upgrades }) => {
   console.log("Reclaim Implementation deployed to:", res.events[0].args[0]);
   console.log("Reclaim Proxy deployed to: ", Reclaim.address);
 
-  await verify(incrementalBinaryTreeAddress);
-  await verify(pairingAddress);
-  await verify(semaphoreVerifierAddress);
-  await verify(semaphore, [semaphoreVerifierAddress]);
-  await verify(Reclaim.address, []);
-  //   await verify(res.events[0].args[0], []);
-  //
+  await verify(incrementalBinaryTreeAddress, network.name);
+  await verify(pairingAddress, network.name);
+  await verify(semaphoreVerifierAddress, network.name);
+  await verify(semaphore.address, network.name, [semaphoreVerifierAddress]);
+  await verify(Reclaim.address, network.name, []);
 });

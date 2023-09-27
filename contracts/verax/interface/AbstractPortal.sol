@@ -6,32 +6,27 @@ import {ModuleRegistry} from "../registry/ModuleRegistry.sol";
 import {PortalRegistry} from "../registry/PortalRegistry.sol";
 import {AttestationPayload} from "../types/Structs.sol";
 // solhint-disable-next-line max-line-length
-import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {IRouter} from "../interface/IRouter.sol";
 
-abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
+abstract contract AbstractPortal is IERC165 {
 	IRouter public router;
 	address[] public modules;
 	ModuleRegistry public moduleRegistry;
 	AttestationRegistry public attestationRegistry;
 	PortalRegistry public portalRegistry;
 
-	/// @notice Error thrown when the numbers of modules to go through and payloads for them is not the same
-	error ModulePayloadMismatch();
 	/// @notice Error thrown when someone else than the portal's owner is trying to revoke
 	error OnlyPortalOwner();
 
 	/**
-	 * @notice Contract initialization
+	 * @notice Contract constructor
 	 * @param _modules list of modules to use for the portal (can be empty)
 	 * @param _router Router's address
+	 * @dev This sets the addresses for the AttestationRegistry, ModuleRegistry and PortalRegistry
 	 */
-	function initialize(
-		address[] calldata _modules,
-		address _router
-	) public virtual initializer {
-		// Store addresses for linked modules, ModuleRegistry and AttestationRegistry
+	constructor(address[] memory _modules, address _router) {
 		modules = _modules;
 		router = IRouter(_router);
 		attestationRegistry = AttestationRegistry(router.getAttestationRegistry());
@@ -40,7 +35,14 @@ abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
 	}
 
 	/**
-	 * @notice attest the schema with given attestationPayload and validationPayload
+	 * @notice Optional method to withdraw funds from the Portal
+	 * @param to the address to send the funds to
+	 * @param amount the amount to withdraw
+	 */
+	function withdraw(address payable to, uint256 amount) external virtual;
+
+	/**
+	 * @notice Attest the schema with given attestationPayload and validationPayload
 	 * @param attestationPayload the payload to attest
 	 * @param validationPayloads the payloads to validate via the modules to issue the attestations
 	 * @dev Runs all modules for the portal and registers the attestation using AttestationRegistry
@@ -48,14 +50,17 @@ abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
 	function attest(
 		AttestationPayload memory attestationPayload,
 		bytes[] memory validationPayloads
-	) public payable virtual {
-		if (modules.length != 0) _runModules(attestationPayload, validationPayloads);
+	) public payable {
+		moduleRegistry.runModules(
+			modules,
+			attestationPayload,
+			validationPayloads,
+			msg.value
+		);
 
-		_beforeAttest(attestationPayload, msg.value);
+		_onAttest(attestationPayload, getAttester(), msg.value);
 
-		attestationRegistry.attest(attestationPayload, _getAttester());
-
-		_afterAttest();
+		attestationRegistry.attest(attestationPayload, getAttester());
 	}
 
 	/**
@@ -66,39 +71,80 @@ abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
 	function bulkAttest(
 		AttestationPayload[] memory attestationsPayloads,
 		bytes[][] memory validationPayloads
-	) public payable virtual {
-		_onBulkAttest(attestationsPayloads, validationPayloads);
-		// Run all modules for all payloads
+	) public {
 		moduleRegistry.bulkRunModules(modules, attestationsPayloads, validationPayloads);
-		// Register attestations using the attestation registry
-		attestationRegistry.bulkAttest(attestationsPayloads, _getAttester());
+
+		_onBulkAttest(attestationsPayloads, validationPayloads);
+
+		attestationRegistry.bulkAttest(attestationsPayloads, getAttester());
 	}
 
 	/**
-	 * @notice Revokes the attestation for the given identifier and can replace it by a new one
-	 * @param attestationId the attestation ID to revoke
-	 * @param replacedBy the replacing attestation ID (leave empty to just revoke)
+	 * @notice Replaces the attestation for the given identifier and replaces it with a new attestation
+	 * @param attestationId the ID of the attestation to replace
+	 * @param attestationPayload the attestation payload to create the new attestation and register it
+	 * @param validationPayloads the payloads to validate via the modules to issue the attestation
+	 * @dev Runs all modules for the portal and registers the attestation using AttestationRegistry
+	 */
+	function replace(
+		bytes32 attestationId,
+		AttestationPayload memory attestationPayload,
+		bytes[] memory validationPayloads
+	) public payable {
+		moduleRegistry.runModules(
+			modules,
+			attestationPayload,
+			validationPayloads,
+			msg.value
+		);
+
+		_onReplace(attestationId, attestationPayload, getAttester(), msg.value);
+
+		attestationRegistry.replace(attestationId, attestationPayload, getAttester());
+	}
+
+	/**
+	 * @notice Bulk replaces the attestation for the given identifiers and replaces them with new attestations
+	 * @param attestationIds the list of IDs of the attestations to replace
+	 * @param attestationsPayloads the list of attestation payloads to create the new attestations and register them
+	 * @param validationPayloads the payloads to validate via the modules to issue the attestations
+	 */
+	function bulkReplace(
+		bytes32[] memory attestationIds,
+		AttestationPayload[] memory attestationsPayloads,
+		bytes[][] memory validationPayloads
+	) public {
+		moduleRegistry.bulkRunModules(modules, attestationsPayloads, validationPayloads);
+
+		_onBulkReplace(attestationIds, attestationsPayloads, validationPayloads);
+
+		attestationRegistry.bulkReplace(
+			attestationIds,
+			attestationsPayloads,
+			getAttester()
+		);
+	}
+
+	/**
+	 * @notice Revokes an attestation for the given identifier
+	 * @param attestationId the ID of the attestation to revoke
 	 * @dev By default, revocation is only possible by the portal owner
 	 * We strongly encourage implementing such a rule in your Portal if you intend on overriding this method
 	 */
-	function revoke(bytes32 attestationId, bytes32 replacedBy) public virtual {
-		if (msg.sender != portalRegistry.getPortalByAddress(address(this)).ownerAddress)
-			revert OnlyPortalOwner();
-		_onRevoke(attestationId, replacedBy);
-		attestationRegistry.revoke(attestationId, replacedBy);
+	function revoke(bytes32 attestationId) public {
+		_onRevoke(attestationId);
+
+		attestationRegistry.revoke(attestationId);
 	}
 
 	/**
-	 * @notice Bulk revokes attestations for given identifiers and can replace them by new ones
-	 * @param attestationIds the attestations IDs to revoke
-	 * @param replacedBy the replacing attestations IDs (leave an ID empty to just revoke)
+	 * @notice Bulk revokes a list of attestations for the given identifiers
+	 * @param attestationIds the IDs of the attestations to revoke
 	 */
-	function bulkRevoke(
-		bytes32[] memory attestationIds,
-		bytes32[] memory replacedBy
-	) public virtual {
-		_onBulkRevoke(attestationIds, replacedBy);
-		attestationRegistry.bulkRevoke(attestationIds, replacedBy);
+	function bulkRevoke(bytes32[] memory attestationIds) public {
+		_onBulkRevoke(attestationIds);
+
+		attestationRegistry.bulkRevoke(attestationIds);
 	}
 
 	/**
@@ -119,37 +165,42 @@ abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
 	) public pure virtual override returns (bool) {
 		return
 			interfaceID == type(AbstractPortal).interfaceId ||
-			interfaceID == type(IERC165Upgradeable).interfaceId;
+			interfaceID == type(IERC165).interfaceId;
 	}
 
 	/**
-	 * @notice Runs all the modules linked to the Portal to check their logic against the validation payload
-	 * @param attestationPayload the attestation payload supposed to be attested
-	 * @param validationPayloads the list of payloads used by modules
-	 * @dev Each module must have its own item in the list of validation payloads
+	 * @notice Defines the address of the entity issuing attestations to the subject
+	 * @dev We strongly encourage a reflection when overriding this rule: who should be set as the attester?
 	 */
-	function _runModules(
-		AttestationPayload memory attestationPayload,
-		bytes[] memory validationPayloads
-	) internal {
-		if (modules.length != validationPayloads.length) revert ModulePayloadMismatch();
-		moduleRegistry.runModules(modules, attestationPayload, validationPayloads);
+	function getAttester() public view virtual returns (address) {
+		return msg.sender;
 	}
 
 	/**
 	 * @notice Optional method run before a payload is attested
 	 * @param attestationPayload the attestation payload supposed to be attested
-	 * @param value the optional ETH value paid for this attestation
+	 * @param attester the address of the attester
+	 * @param value the value sent with the attestation
 	 */
-	function _beforeAttest(
+	function _onAttest(
 		AttestationPayload memory attestationPayload,
+		address attester,
 		uint256 value
-	) internal virtual;
+	) internal virtual {}
 
 	/**
-	 * @notice Optional method run after a payload is attested
+	 * @notice Optional method run when an attestation is replaced
+	 * @param attestationId the ID of the attestation being replaced
+	 * @param attestationPayload the attestation payload to create attestation and register it
+	 * @param attester the address of the attester
+	 * @param value the value sent with the attestation
 	 */
-	function _afterAttest() internal virtual;
+	function _onReplace(
+		bytes32 attestationId,
+		AttestationPayload memory attestationPayload,
+		address attester,
+		uint256 value
+	) internal virtual {}
 
 	/**
 	 * @notice Optional method run when attesting a batch of payloads
@@ -159,30 +210,29 @@ abstract contract AbstractPortal is Initializable, IERC165Upgradeable {
 	function _onBulkAttest(
 		AttestationPayload[] memory attestationsPayloads,
 		bytes[][] memory validationPayloads
-	) internal virtual;
+	) internal virtual {}
+
+	function _onBulkReplace(
+		bytes32[] memory attestationIds,
+		AttestationPayload[] memory attestationsPayloads,
+		bytes[][] memory validationPayloads
+	) internal virtual {}
 
 	/**
 	 * @notice Optional method run when an attestation is revoked or replaced
-	 * @param attestationId the attestation ID to revoke
-	 * @param replacedBy the replacing attestation ID
+	 * @dev    IMPORTANT NOTE: By default, revocation is only possible by the portal owner
 	 */
-	function _onRevoke(bytes32 attestationId, bytes32 replacedBy) internal virtual;
+	function _onRevoke(bytes32 /*attestationId*/) internal virtual {
+		if (msg.sender != portalRegistry.getPortalByAddress(address(this)).ownerAddress)
+			revert OnlyPortalOwner();
+	}
 
 	/**
 	 * @notice Optional method run when a batch of attestations are revoked or replaced
-	 * @param attestationIds the attestations IDs to revoke
-	 * @param replacedBy the replacing attestations IDs
+	 * @dev    IMPORTANT NOTE: By default, revocation is only possible by the portal owner
 	 */
-	function _onBulkRevoke(
-		bytes32[] memory attestationIds,
-		bytes32[] memory replacedBy
-	) internal virtual;
-
-	/**
-	 * @notice Defines the address of the entity issuing attestations to the subject
-	 * @dev We strongly encourage a reflection when overriding this rule: who should be set as the attester?
-	 */
-	function _getAttester() public view virtual returns (address) {
-		return msg.sender;
+	function _onBulkRevoke(bytes32[] memory /*attestationIds*/) internal virtual {
+		if (msg.sender != portalRegistry.getPortalByAddress(address(this)).ownerAddress)
+			revert OnlyPortalOwner();
 	}
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 import {Attestation, AttestationPayload} from "../types/Structs.sol";
 import {PortalRegistry} from "./PortalRegistry.sol";
 import {SchemaRegistry} from "./SchemaRegistry.sol";
@@ -12,7 +13,7 @@ import {IRouter} from "../interface/IRouter.sol";
  * @author Consensys
  * @notice This contract stores a registry of all attestations
  */
-contract AttestationRegistry is OwnableUpgradeable {
+contract AttestationRegistry is OwnableUpgradeable, ERC1155Upgradeable {
 	IRouter public router;
 
 	uint16 private version;
@@ -34,17 +35,19 @@ contract AttestationRegistry is OwnableUpgradeable {
 	error AttestationSubjectFieldEmpty();
 	/// @notice Error thrown when an attestation data field is empty
 	error AttestationDataFieldEmpty();
+	/// @notice Error thrown when an attempt is made to bulk replace with mismatched parameter array lengths
+	error ArrayLengthMismatch();
 	/// @notice Error thrown when an attempt is made to revoke an attestation that was already revoked
 	error AlreadyRevoked();
 	/// @notice Error thrown when an attempt is made to revoke an attestation based on a non-revocable schema
 	error AttestationNotRevocable();
-	/// @notice Error thrown when attempting to bulk revoke attestations without the same number of replacing attestations
-	error BulkRevocationInvalidParams();
 
 	/// @notice Event emitted when an attestation is registered
 	event AttestationRegistered(bytes32 indexed attestationId);
+	/// @notice Event emitted when an attestation is replaced
+	event AttestationReplaced(bytes32 attestationId, bytes32 replacedBy);
 	/// @notice Event emitted when an attestation is revoked
-	event AttestationRevoked(bytes32 attestationId, bytes32 replacedBy);
+	event AttestationRevoked(bytes32 attestationId);
 	/// @notice Event emitted when the version number is incremented
 	event VersionUpdated(uint16 version);
 
@@ -74,6 +77,7 @@ contract AttestationRegistry is OwnableUpgradeable {
 
 	/**
 	 * @notice Changes the address for the Router
+	 * @dev Only the registry owner can call this method
 	 */
 	function updateRouter(address _router) public onlyOwner {
 		if (_router == address(0)) revert RouterInvalid();
@@ -156,15 +160,52 @@ contract AttestationRegistry is OwnableUpgradeable {
 				attestationsPayloads[i].subject,
 				attestationsPayloads[i].attestationData
 			);
+			emit AttestationRegistered(id);
 		}
 	}
 
 	/**
-	 * @notice Revokes an attestation for given identifier and can replace it by an other one
-	 * @param attestationId the attestation ID to revoke
-	 * @param replacedBy the replacing attestation ID (leave empty to just revoke)
+	 * @notice Replaces an attestation for the given identifier and replaces it with a new attestation
+	 * @param attestationId the ID of the attestation to replace
+	 * @param attestationPayload the attestation payload to create the new attestation and register it
+	 * @param attester the account address issuing the attestation
 	 */
-	function revoke(bytes32 attestationId, bytes32 replacedBy) public {
+	function replace(
+		bytes32 attestationId,
+		AttestationPayload calldata attestationPayload,
+		address attester
+	) public {
+		attest(attestationPayload, attester);
+		revoke(attestationId);
+		bytes32 replacedBy = bytes32(uint256(attestationIdCounter));
+		attestations[attestationId].replacedBy = replacedBy;
+
+		emit AttestationReplaced(attestationId, replacedBy);
+	}
+
+	/**
+	 * @notice Replaces attestations for given identifiers and replaces them with new attestations
+	 * @param attestationIds the list of IDs of the attestations to replace
+	 * @param attestationPayloads the list of attestation payloads to create the new attestations and register them
+	 * @param attester the account address issuing the attestation
+	 */
+	function bulkReplace(
+		bytes32[] calldata attestationIds,
+		AttestationPayload[] calldata attestationPayloads,
+		address attester
+	) public {
+		if (attestationIds.length != attestationPayloads.length)
+			revert ArrayLengthMismatch();
+		for (uint256 i = 0; i < attestationIds.length; i++) {
+			replace(attestationIds[i], attestationPayloads[i], attester);
+		}
+	}
+
+	/**
+	 * @notice Revokes an attestation for a given identifier
+	 * @param attestationId the ID of the attestation to revoke
+	 */
+	function revoke(bytes32 attestationId) public {
 		if (!isRegistered(attestationId)) revert AttestationNotAttested();
 		if (attestations[attestationId].revoked) revert AlreadyRevoked();
 		if (msg.sender != attestations[attestationId].portal)
@@ -175,25 +216,16 @@ contract AttestationRegistry is OwnableUpgradeable {
 		attestations[attestationId].revoked = true;
 		attestations[attestationId].revocationDate = uint64(block.timestamp);
 
-		if (isRegistered(replacedBy)) attestations[attestationId].replacedBy = replacedBy;
-
-		emit AttestationRevoked(attestationId, replacedBy);
+		emit AttestationRevoked(attestationId);
 	}
 
 	/**
-	 * @notice Bulk revokes attestations for given identifiers and can replace them by new ones
-	 * @param attestationIds the attestations IDs to revoke
-	 * @param replacedBy the replacing attestations IDs (leave an ID empty to just revoke)
+	 * @notice Bulk revokes a list of attestations for the given identifiers
+	 * @param attestationIds the IDs of the attestations to revoke
 	 */
-	function bulkRevoke(
-		bytes32[] memory attestationIds,
-		bytes32[] memory replacedBy
-	) external {
-		if (attestationIds.length != replacedBy.length)
-			revert BulkRevocationInvalidParams();
-
+	function bulkRevoke(bytes32[] memory attestationIds) external {
 		for (uint256 i = 0; i < attestationIds.length; i++) {
-			revoke(attestationIds[i], replacedBy[i]);
+			revoke(attestationIds[i]);
 		}
 	}
 
@@ -252,5 +284,42 @@ contract AttestationRegistry is OwnableUpgradeable {
 	 */
 	function getAttestationIdCounter() public view returns (uint32) {
 		return attestationIdCounter;
+	}
+
+	/**
+	 * @notice Checks if an address owns a given attestation
+	 * @param account The address of the token holder
+	 * @param id ID of the attestation
+	 * @return The _owner's balance of the attestations on a given attestation ID
+	 */
+	function balanceOf(
+		address account,
+		uint256 id
+	) public view override returns (uint256) {
+		bytes32 attestationId = bytes32(id);
+		Attestation memory attestation = attestations[attestationId];
+		if (keccak256(attestation.subject) == keccak256(abi.encode(account))) return 1;
+		return 0;
+	}
+
+	/**
+	 * @notice Get the balance of multiple account/attestation pairs
+	 * @param accounts The addresses of the attestation holders
+	 * @param ids ID of the attestations
+	 * @return The _owner's balance of the attestation for a given address (i.e. balance for each (owner, id) pair)
+	 */
+	function balanceOfBatch(
+		address[] memory accounts,
+		uint256[] memory ids
+	) public view override returns (uint256[] memory) {
+		if (accounts.length != ids.length) revert ArrayLengthMismatch();
+		uint256[] memory result = new uint256[](accounts.length);
+		for (uint256 i = 0; i < accounts.length; i++) {
+			bytes32 attestationId = bytes32(ids[i]);
+			Attestation memory attestation = attestations[attestationId];
+			if (keccak256(attestation.subject) == keccak256(abi.encode(accounts[i])))
+				result[i] = 1;
+		}
+		return result;
 	}
 }

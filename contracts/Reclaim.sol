@@ -215,7 +215,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	function getMerkelizedUserParams(
 		string memory provider,
 		string memory params
-	) external returns (bool) {
+	) external view returns (bool) {
 		bytes32 userParamsHash = calculateUserParamsHash(provider, params);
 		return merkelizedUserParams[userParamsHash];
 	}
@@ -382,7 +382,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	function calculateUserParamsHash(
 		string memory provider,
 		string memory params
-	) internal returns (bytes32) {
+	) internal pure returns (bytes32) {
 		bytes32 userParamsHash = keccak256(abi.encodePacked(provider, params));
 		return userParamsHash;
 	}

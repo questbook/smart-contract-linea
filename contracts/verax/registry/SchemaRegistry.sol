@@ -28,8 +28,6 @@ contract SchemaRegistry is OwnableUpgradeable {
 	error SchemaNameMissing();
 	/// @notice Error thrown when attempting to add a Schema without a string to define it
 	error SchemaStringMissing();
-	/// @notice Error thrown when attempting to add a Schema without a context
-	error SchemaContextMissing();
 	/// @notice Error thrown when attempting to get a Schema that is not registered
 	error SchemaNotRegistered();
 
@@ -68,6 +66,7 @@ contract SchemaRegistry is OwnableUpgradeable {
 
 	/**
 	 * @notice Changes the address for the Router
+	 * @dev Only the registry owner can call this method
 	 */
 	function updateRouter(address _router) public onlyOwner {
 		if (_router == address(0)) revert RouterInvalid();
@@ -84,7 +83,8 @@ contract SchemaRegistry is OwnableUpgradeable {
 		return keccak256(abi.encodePacked(schema));
 	}
 
-	/** Create a Schema, with its metadata and run some checks:
+	/**
+	 * @notice Creates a Schema, with its metadata and runs some checks:
 	 * - mandatory name
 	 * - mandatory string defining the schema
 	 * - the Schema must be unique
@@ -102,7 +102,6 @@ contract SchemaRegistry is OwnableUpgradeable {
 	) public onlyIssuers(msg.sender) {
 		if (bytes(name).length == 0) revert SchemaNameMissing();
 		if (bytes(schemaString).length == 0) revert SchemaStringMissing();
-		if (bytes(context).length == 0) revert SchemaContextMissing();
 
 		bytes32 schemaId = getIdFromSchemaString(schemaString);
 
@@ -115,7 +114,8 @@ contract SchemaRegistry is OwnableUpgradeable {
 		emit SchemaCreated(schemaId, name, description, context, schemaString);
 	}
 
-	/** Update a context field of schema :
+	/**
+	 * @notice Updates the context of a given schema
 	 * @param schemaId the schema ID
 	 * @param context the Schema context
 	 * @dev Retrieve the Schema with given ID and update its context with new value
@@ -125,7 +125,6 @@ contract SchemaRegistry is OwnableUpgradeable {
 		string memory context
 	) public onlyIssuers(msg.sender) {
 		if (!isRegistered(schemaId)) revert SchemaNotRegistered();
-		if (bytes(context).length == 0) revert SchemaContextMissing();
 		schemas[schemaId].context = context;
 	}
 

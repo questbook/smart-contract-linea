@@ -72,6 +72,10 @@ library StringUtils {
 		return keccak256(abi.encodePacked((_a))) == keccak256(abi.encodePacked((_b)));
 	}
 
+	function areEqual(string memory _a, string memory _b) internal pure returns (bool) {
+		return keccak256(abi.encodePacked((_a))) == keccak256(abi.encodePacked((_b)));
+	}
+
 	function substring(
 		string memory str,
 		uint startIndex,
