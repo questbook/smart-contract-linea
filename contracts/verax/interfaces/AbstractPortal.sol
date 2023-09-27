@@ -8,7 +8,7 @@ import {AttestationPayload} from "../types/Structs.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {IRouter} from "../interface/IRouter.sol";
+import {IRouter} from "../interfaces/IRouter.sol";
 
 abstract contract AbstractPortal is IERC165 {
 	IRouter public router;

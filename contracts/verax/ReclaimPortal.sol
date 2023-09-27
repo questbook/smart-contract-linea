@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.4;
 
-import {AbstractPortal} from "./interface/AbstractPortal.sol";
+import {AbstractPortal} from "./interfaces/AbstractPortal.sol";
 import {AttestationPayload} from "./types/Structs.sol";
 import "../Reclaim.sol";
 
@@ -28,7 +28,7 @@ contract ReclaimPortal is AbstractPortal {
 	) AbstractPortal(modules, router) {}
 
 	function attest(AttestationRequest memory attestationRequest) public payable {
-		bytes[] memory validationPayload = new bytes[](0);
+		bytes[] memory validationPayload = new bytes[](1);
 		AttestationPayload memory attestationPayload = AttestationPayload(
 			attestationRequest.schema,
 			attestationRequest.data.expirationTime,

@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Schema} from "../types/Structs.sol";
 import {PortalRegistry} from "./PortalRegistry.sol";
-import {IRouter} from "../interface/IRouter.sol";
+import {IRouter} from "../interfaces/IRouter.sol";
 
 /**
  * @title Schema Registry

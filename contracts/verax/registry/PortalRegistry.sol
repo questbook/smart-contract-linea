@@ -5,10 +5,10 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165CheckerUpgradeable.sol";
 // import {ERC165CheckerUpgradeable} from "openzeppelin-contracts-upgradeable/contracts/utils/introspection/ERC165CheckerUpgradeable.sol";
-import {AbstractPortal} from "../interface/AbstractPortal.sol";
+import {AbstractPortal} from "../interfaces/AbstractPortal.sol";
 // import {DefaultPortal} from "./portal/DefaultPortal.sol";
 import {Portal} from "../types/Structs.sol";
-import {IRouter} from "../interface/IRouter.sol";
+import {IRouter} from "../interfaces/IRouter.sol";
 
 /**
  * @title Portal Registry

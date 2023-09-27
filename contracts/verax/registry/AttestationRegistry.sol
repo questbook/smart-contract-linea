@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol
 import {Attestation, AttestationPayload} from "../types/Structs.sol";
 import {PortalRegistry} from "./PortalRegistry.sol";
 import {SchemaRegistry} from "./SchemaRegistry.sol";
-import {IRouter} from "../interface/IRouter.sol";
+import {IRouter} from "../interfaces/IRouter.sol";
 
 /**
  * @title Attestation Registry

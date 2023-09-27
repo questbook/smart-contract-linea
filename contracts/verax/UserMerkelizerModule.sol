@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.4;
 
-import {AbstractModule} from "./interface/AbstractModule.sol";
+import {AbstractModule} from "./interfaces/AbstractModule.sol";
 import {AttestationPayload} from "./types/Structs.sol";
 import {Reclaim} from "../Reclaim.sol";
 import "../lib/StringUtils.sol";

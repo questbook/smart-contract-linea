@@ -2,8 +2,9 @@ import { randomBytes } from "crypto";
 import { BigNumber, Signer, Wallet } from "ethers";
 import { ethers, upgrades } from "hardhat";
 import type {} from "../hardhat.config";
-import { Reclaim, Semaphore } from "../src/types";
+import { Reclaim, SchemaRegistry, Semaphore } from "../src/types";
 import type {} from "../src/types/hardhat";
+import fs from "fs";
 
 export function randomEthAddress() {
   const addr = randomBytes(20); // random address
@@ -68,4 +69,12 @@ export async function generateMockWitnessesList(
     witnessesWallets[wallet.address] = wallet;
   }
   return { mockWitnesses, witnessesWallets };
+}
+
+export async function registerSchema(
+  schemaRegistery: SchemaRegistry,
+  name: string,
+  schema: string
+) {
+  await schemaRegistery.createSchema(name, "n/a", "n/a", schema);
 }
