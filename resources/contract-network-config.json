@@ -1,0 +1,46 @@
+{
+  "networks": {
+    "linea_testnet": {
+      "Semaphore": {
+        "address": "0xd9692F91DC89f14f4211fa07aD2Bd1E9aD99D953",
+        "explorer": "https://explorer.goerli.linea.build/address/0xd9692F91DC89f14f4211fa07aD2Bd1E9aD99D953"
+      },
+      "SemaphoreVeriefier": {
+        "address": "0xD594971cea3fb43Dd3d2De87C216ac2aCE320fc2",
+        "explorer": "https://explorer.goerli.linea.build/address/0xD594971cea3fb43Dd3d2De87C216ac2aCE320fc2"
+      },
+      "Reclaim": {
+        "address": "0xf223E215B2c9A2E5FE1B2971d5694684b2E734C1",
+        "explorer": "https://explorer.goerli.linea.build/address/0xf223E215B2c9A2E5FE1B2971d5694684b2E734C1"
+      },
+      "Router": {
+        "address": "0x0412a3Bfbd9871DB519e449aBeaa3CAE4E89eB4B",
+        "explorer": "https://explorer.goerli.linea.build/address/0x0412a3Bfbd9871DB519e449aBeaa3CAE4E89eB4B"
+      },
+      "AttestationRegistry": {
+        "address": "0x7A2B692c8c46715727ae8b2BFb6259a1A1113fA0",
+        "explorer": "https://explorer.goerli.linea.build/address/0x7A2B692c8c46715727ae8b2BFb6259a1A1113fA0"
+      },
+      "ModuleRegistry": {
+        "address": "0x4A79C4fBe6c2F849D0fD4da8c24214491BaF41cd",
+        "explorer": "https://explorer.goerli.linea.build/address/0x4A79C4fBe6c2F849D0fD4da8c24214491BaF41cd"
+      },
+      "PortalRegistry": {
+        "address": "0xB51FCb41fF11e0445600f63D8c38f955DcCB0B2c",
+        "explorer": "https://explorer.goerli.linea.build/address/0xB51FCb41fF11e0445600f63D8c38f955DcCB0B2c"
+      },
+      "SchemaRegistry": {
+        "address": "0xEbBbc3A976A81AE54938E09F297ab7313E00D6a5",
+        "explorer": "https://explorer.goerli.linea.build/address/0xEbBbc3A976A81AE54938E09F297ab7313E00D6a5"
+      },
+      "ReclaimPortal": {
+        "address": "0x798c6B325671E6bA13c03Cb8B208d708F58B0f39",
+        "explorer": "https://explorer.goerli.linea.build/address/0x798c6B325671E6bA13c03Cb8B208d708F58B0f39"
+      },
+      "UserMerkelizerModule": {
+        "address": "0xd1cdF9B236c0f56D20d90a7F8129D129e4cEb7DB",
+        "explorer": "https://explorer.goerli.linea.build/address/0xd1cdF9B236c0f56D20d90a7F8129D129e4cEb7DB"
+      }
+    }
+  }
+}

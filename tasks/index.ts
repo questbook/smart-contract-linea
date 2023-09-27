@@ -7,3 +7,4 @@ import "./view-witnesses";
 import "./remove-witness";
 import "./upgrade";
 import "./add-new-epoch";
+import "./add-schemas";

@@ -59,13 +59,14 @@ function encodeProviderParamsForVerax(params: Object) {
 async function main() {
   console.log("start scanning providers folders");
   const providers = getProvidersExamplesObjects(PROVIDERS_DIR);
-  const result: { name: string; schema: string }[] = [];
+  const result: { name: string; schema: string; isRegistered: boolean }[] = [];
   for (let provider of providers) {
     const schemaName = provider.name;
     const schemaStr = encodeProviderParamsForVerax(provider.params);
     result.push({
       name: schemaName,
       schema: schemaStr,
+      isRegistered: false,
     });
   }
 

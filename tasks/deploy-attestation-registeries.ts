@@ -9,6 +9,7 @@ import {
   SchemaRegistry,
 } from "../src/types";
 import { VeraxRegisteries } from "../types";
+import fs from "fs";
 
 task("deploy-registeries").setAction(
   async ({ log }, { ethers, network, upgrades }): Promise<VeraxRegisteries> => {
@@ -175,6 +176,34 @@ task("deploy-registeries").setAction(
       console.log(`ModuleRegistry = ${moduleRegistryProxyAddress}`);
       console.log(`PortalRegistry = ${portalRegistryProxyAddress}`);
       console.log(`SchemaRegistry = ${schemaRegistryProxyAddress}`);
+    }
+    if (network.name !== "hardhat") {
+      const content = JSON.parse(
+        fs.readFileSync("./resources/contract-network-config.json", "utf-8")
+      );
+      const networkDetails = content["networks"][network.name];
+      networkDetails["Router"] = { address: routerProxyAddress, explorer: "" };
+      networkDetails["AttestationRegistry"] = {
+        address: attestationRegistryProxyAddress,
+        explorer: "",
+      };
+      networkDetails["ModuleRegistry"] = {
+        address: moduleRegistryProxyAddress,
+        explorer: "",
+      };
+      networkDetails["PortalRegistry"] = {
+        address: portalRegistryProxyAddress,
+        explorer: "",
+      };
+      networkDetails["SchemaRegistry"] = {
+        address: schemaRegistryProxyAddress,
+        explorer: "",
+      };
+      content["networks"][network.name] = networkDetails;
+      fs.writeFileSync(
+        "./resources/contract-network-config.json",
+        JSON.stringify(content)
+      );
     }
     return {
       router,

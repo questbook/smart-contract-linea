@@ -40,7 +40,8 @@ const config: HardhatUserConfig = {
     linea_testnet: {
       url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: [process.env.PRIVATE_KEY!],
-      // gasPrice: 450000000000,
+      gas: 2100000,
+      gasPrice: 8000000000,
     },
     // ...(hasCustomNetwork
     //   ? {
