@@ -42,9 +42,9 @@ task("deploy-verax").setAction(
     );
 
     console.log(`Deploying UserMerkelizerModule..`);
-    const userMerkelizerModule = await userMerkelizerModuleFactory.deploy([
-      Reclaim.address,
-    ]);
+    const userMerkelizerModule = await userMerkelizerModuleFactory.deploy(
+      Reclaim.address
+    );
     const userMerkelizerModuletx = await userMerkelizerModule.deployed();
     await userMerkelizerModuletx.deployTransaction.wait();
     console.log(
@@ -64,10 +64,10 @@ task("deploy-verax").setAction(
       "ReclaimPortal"
     );
     console.log(`Deploying ReclaimPortal..`);
-    const reclaimPortal = await ReclaimPortalFactory.deploy([
+    const reclaimPortal = await ReclaimPortalFactory.deploy(
       [userMerkelizerModule.address],
-      router.address,
-    ]);
+      router.address
+    );
     await reclaimPortal.deployTransaction.wait();
     console.log("ReclaimPortal deployed to " + reclaimPortal.address);
 

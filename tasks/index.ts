@@ -8,3 +8,4 @@ import "./remove-witness";
 import "./upgrade";
 import "./add-new-epoch";
 import "./add-schemas";
+import "./add-group";

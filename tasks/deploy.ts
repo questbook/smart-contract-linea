@@ -1,8 +1,16 @@
 import { task } from "hardhat/config";
 import verify from "../scripts/verify";
 import { ReturnObjectSemaphoreDeployTask } from "../types";
+import fs from "fs";
 
 task("deploy").setAction(async ({}, { ethers, network, upgrades }) => {
+  const content = JSON.parse(
+    fs.readFileSync("./resources/contract-network-config.json", "utf-8")
+  );
+  const networkDetails = content["networks"][network.name];
+
+  await verify(networkDetails["Reclaim"].address, network.name);
+
   const {
     semaphore,
     pairingAddress,
@@ -11,7 +19,6 @@ task("deploy").setAction(async ({}, { ethers, network, upgrades }) => {
     incrementalBinaryTreeAddress,
   } = // @ts-expect-error events
     (await run("deploy:semaphore")) as ReturnObjectSemaphoreDeployTask;
-
   const ReclaimFactory = await ethers.getContractFactory("Reclaim");
   const Reclaim = await upgrades.deployProxy(
     ReclaimFactory,
@@ -32,5 +39,33 @@ task("deploy").setAction(async ({}, { ethers, network, upgrades }) => {
   await verify(pairingAddress, network.name);
   await verify(semaphoreVerifierAddress, network.name);
   await verify(semaphore.address, network.name, [semaphoreVerifierAddress]);
-  await verify(Reclaim.address, network.name, []);
+  await verify(Reclaim.address, network.name, [semaphore.address]);
+  networkDetails["IncrementalBinaryTree"] = {
+    address: incrementalBinaryTreeAddress,
+    explorer: "",
+  };
+
+  networkDetails["Pairing"] = {
+    address: pairingAddress,
+    explorer: "",
+  };
+  networkDetails["SemaphoreVerifier"] = {
+    address: semaphoreVerifierAddress,
+    explorer: "",
+  };
+  networkDetails["Semaphore"] = {
+    address: semaphore.address,
+    explorer: "",
+  };
+
+  networkDetails["Reclaim"] = {
+    address: Reclaim.address,
+    explorer: "",
+  };
+  content["networks"][network.name] = networkDetails;
+
+  fs.writeFileSync(
+    "./resources/contract-network-config.json",
+    JSON.stringify(content)
+  );
 });

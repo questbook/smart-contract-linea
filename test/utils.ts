@@ -1,10 +1,12 @@
 import { randomBytes } from "crypto";
 import { BigNumber, Signer, Wallet } from "ethers";
-import { ethers, upgrades } from "hardhat";
+// import { ethers, upgrades } from "hardhat";
 import type {} from "../hardhat.config";
 import { Reclaim, SchemaRegistry, Semaphore } from "../src/types";
 import type {} from "../src/types/hardhat";
 import fs from "fs";
+import { HardhatEthersHelpers } from "hardhat/types";
+import { HardhatUpgrades } from "@openzeppelin/hardhat-upgrades";
 
 export function randomEthAddress() {
   const addr = randomBytes(20); // random address
@@ -12,8 +14,11 @@ export function randomEthAddress() {
   return addrHex;
 }
 
-export async function randomWallet(balanceEth: BigNumber | number = 1) {
-  const wallet = ethers.Wallet.createRandom().connect(ethers.provider);
+export async function randomWallet(
+  balanceEth: BigNumber | number = 1,
+  provider
+) {
+  const wallet = Wallet.createRandom().connect(provider);
   if ((balanceEth as number) > 0) {
     // fund the wallet so it can make transactions
     let wei =
@@ -21,7 +26,9 @@ export async function randomWallet(balanceEth: BigNumber | number = 1) {
         ? "0x" + Number(balanceEth * 1e18).toString(16)
         : balanceEth.toHexString();
     wei = wei.replace("0x0", "0x");
-    await ethers.provider.send("hardhat_setBalance", [wallet.address, wei]);
+    if (balanceEth !== 0) {
+      await provider.send("hardhat_setBalance", [wallet.address, wei]);
+    }
   }
 
   return wallet;
@@ -29,6 +36,8 @@ export async function randomWallet(balanceEth: BigNumber | number = 1) {
 
 export async function deployReclaimContract(
   semaphore: Semaphore,
+  ethers: HardhatEthersHelpers,
+  upgrades: HardhatUpgrades,
   signer?: Signer
 ) {
   const factory = await ethers.getContractFactory("Reclaim", signer);
@@ -56,12 +65,13 @@ export async function randomiseWitnessList(witnesses: Reclaim.WitnessStruct[]) {
 
 export async function generateMockWitnessesList(
   numOfWitnesses: number,
-  hostPrefix: string
+  hostPrefix: string,
+  ethers: HardhatEthersHelpers
 ) {
   let mockWitnesses: Reclaim.WitnessStruct[] = [];
   let witnessesWallets: Record<string, Wallet> = {};
   for (let i = 1; i <= numOfWitnesses; i++) {
-    const wallet: Wallet = await randomWallet();
+    const wallet: Wallet = await randomWallet(0, ethers.provider);
     mockWitnesses.push({
       addr: wallet.address,
       host: hostPrefix + i,

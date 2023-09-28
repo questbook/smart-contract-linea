@@ -72,9 +72,7 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	 * */
 	mapping(uint256 => bool) createdGroups;
 
-	mapping(bytes32 => bool) merkelizedUserParams;
-
-	mapping(bytes32 => uint256) dappIdToExternalNullifier;
+	mapping(uint256 => mapping(string => bool)) isUserMerkelized;
 
 	event EpochAdded(Epoch epoch);
 
@@ -83,6 +81,10 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	event DappCreated(bytes32 indexed dappId);
 
 	bool internal locked;
+
+	mapping(bytes32 => bool) merkelizedUserParams;
+
+	mapping(bytes32 => uint256) dappIdToExternalNullifier;
 
 	// Modifiers
 	modifier noReentrant() {

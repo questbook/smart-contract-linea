@@ -1,4 +1,4 @@
-import { ethers, run } from "hardhat";
+import { ethers, run, upgrades } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Reclaim } from "../src/types";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
@@ -25,10 +25,16 @@ const MOCK_HOST_PREFIX = "localhost:555";
 export async function deployFixture() {
   let owner: SignerWithAddress = await ethers.getSigners()[0];
   const { semaphore } = await run("deploy:semaphore", { logs: false });
-  let contract: Reclaim = await deployReclaimContract(semaphore, owner);
+  let contract: Reclaim = await deployReclaimContract(
+    semaphore,
+    ethers,
+    upgrades,
+    owner
+  );
   let { mockWitnesses, witnessesWallets } = await generateMockWitnessesList(
     NUM_WITNESSES,
-    MOCK_HOST_PREFIX
+    MOCK_HOST_PREFIX,
+    ethers
   );
   let witnesses = await randomiseWitnessList(mockWitnesses);
   return { contract, witnesses, owner, semaphore, witnessesWallets };
@@ -39,7 +45,7 @@ export async function proofsFixture() {
     await loadFixture(deployFixture);
 
   let superProofs;
-  let user = await randomWallet(40);
+  let user = await randomWallet(40, ethers.provider);
   await contract.addNewEpoch(witnesses, 5);
   const currentEpoch = await contract.currentEpoch();
   const timestampS = Math.floor(Date.now() / 1000);

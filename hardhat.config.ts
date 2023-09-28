@@ -40,9 +40,15 @@ const config: HardhatUserConfig = {
     linea_testnet: {
       url: `https://linea-goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
       accounts: [process.env.PRIVATE_KEY!],
-      gas: 2100000,
-      gasPrice: 8000000000,
+      gas: 7100000,
+      gasPrice: 80100010000,
     },
+    opt_goerli: {
+      url: `https://opt-goerli.g.alchemy.com/v2/GZ-aIq52UCdrNOdonkLAX7jS2qfpRx9X`,
+      accounts: [process.env.PRIVATE_KEY!],
+      gasPrice: 80100010,
+    },
+
     // ...(hasCustomNetwork
     //   ? {
     //       [NETWORK]: {
@@ -64,6 +70,7 @@ const config: HardhatUserConfig = {
   etherscan: {
     apiKey: {
       linea_testnet: process.env.LINEASCAN_API_KEY || "",
+      optimisticGoerli: process.env.ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -72,6 +79,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.goerli.linea.build/api",
           browserURL: "https://explorer.goerli.linea.build",
+        },
+      },
+      {
+        network: "opt_goerli",
+        chainId: 59140,
+        urls: {
+          apiURL: "https://api-goerli-optimistic.etherscan.io/",
+          browserURL: "https://goerli-optimism.etherscan.io/",
         },
       },
     ],
