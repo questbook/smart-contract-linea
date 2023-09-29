@@ -1,50 +1,31 @@
 "use client";
-import {
-  Box,
-  Button,
-  Divider,
-  Heading,
-  HStack,
-  Input,
-  Link,
-  ListItem,
-  OrderedList,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import { Button, Heading, HStack, Input, Text, VStack } from "@chakra-ui/react";
 
-import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-  useEnsAvatar,
-  useEnsName,
-} from "wagmi";
+import { useAccount } from "wagmi";
 import { Identity } from "@semaphore-protocol/identity";
 import { useRouter } from "next/router";
-import {
-  MouseEventHandler,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useContext, useEffect, useState } from "react";
 import Stepper from "../components/Stepper";
 import LogsContext from "../context/LogsContext";
 import IconAddCircleFill from "../icons/IconAddCircleFill";
 import IconRefreshLine from "../icons/IconRefreshLine";
-import { access } from "fs";
+import useSemaphore from "../hooks/useSemaphore";
+import useReclaimPortal from "../hooks/useReclaimPortal";
 
 export default function IdentitiesPage() {
   const router = useRouter();
+  const [isFinishedGenerating, setIsFinishedGenerating] =
+    useState<boolean>(false);
   const [userName, setUsername] = useState<string>("");
   const { address, isConnected } = useAccount();
-
+  const { _users } = useSemaphore();
+  const { attest } = useReclaimPortal();
   const { setLogs } = useContext(LogsContext);
   const [_identity, setIdentity] = useState<Identity>();
+  const [proof, setProof] = useState();
 
   useEffect(() => {
+    console.log(_users);
     if (!isConnected) return;
     const identity = new Identity(address);
     setIdentity(identity);
@@ -61,15 +42,24 @@ export default function IdentitiesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ address, context, parameters, provider }),
     });
-    console.log(await response.json());
+    const res = await response.json();
+    setProof(res);
     setTimeout(() => {
       setLogs("The proofs have been stored");
+      setIsFinishedGenerating(true);
     }, 2000);
+  };
+
+  const handleAttest = async () => {
+    const idCommitment = _identity?.commitment.toString();
+    const res = await attest(proof, idCommitment);
   };
 
   return (
     <div>
-      {!address && <Heading>Please Connect your wallet</Heading>}
+      {!address && (
+        <Heading textAlign="center">Please Connect your wallet</Heading>
+      )}
       {address && (
         <VStack alignItems="flex-start">
           <HStack width="100%" flexWrap="wrap">
@@ -95,17 +85,31 @@ export default function IdentitiesPage() {
             </Text>
             <Text>{address}</Text>
           </HStack>
-          <Button
-            w="100%"
-            fontWeight="bold"
-            justifyContent="center"
-            colorScheme="primary"
-            px="4"
-            mt="2"
-            onClick={generateProof}
-          >
-            Generate Proof
-          </Button>
+          {isFinishedGenerating ? (
+            <Button
+              w="100%"
+              fontWeight="bold"
+              justifyContent="center"
+              colorScheme="primary"
+              px="4"
+              mt="2"
+              onClick={handleAttest}
+            >
+              Attest with your proof
+            </Button>
+          ) : (
+            <Button
+              w="100%"
+              fontWeight="bold"
+              justifyContent="center"
+              colorScheme="primary"
+              px="4"
+              mt="2"
+              onClick={generateProof}
+            >
+              Generate Proof
+            </Button>
+          )}
         </VStack>
       )}
     </div>
