@@ -18,7 +18,7 @@ import {
   randomWallet,
   randomiseWitnessList,
 } from "./utils";
-import { run } from "hardhat";
+import { ethers, run, upgrades } from "hardhat";
 
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { randomBytes } from "crypto";
@@ -32,7 +32,7 @@ describe("Reclaim Tests", () => {
   it("should fail to execute admin functions if not owner", async () => {
     let { contract, witnesses } = await loadFixture(deployFixture);
     const NOT_OWNER_MSG = "Ownable: caller is not the owner";
-    const user = await randomWallet();
+    const user = await randomWallet(1, ethers.provider);
     contract = await contract.connect(user);
 
     const expectedRejections = [() => contract.addNewEpoch(witnesses, 5)];
@@ -356,10 +356,11 @@ describe("Reclaim Witness Fetch Tests", () => {
       logs: false,
     });
 
-    contract = await deployReclaimContract(semaphore);
+    contract = await deployReclaimContract(semaphore, ethers, upgrades);
     let { mockWitnesses } = await generateMockWitnessesList(
       NUM_WITNESSES,
-      MOCK_HOST_PREFIX
+      MOCK_HOST_PREFIX,
+      ethers
     );
     witnesses = await randomiseWitnessList(mockWitnesses);
   });
