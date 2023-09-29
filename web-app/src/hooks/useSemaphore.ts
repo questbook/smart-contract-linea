@@ -9,11 +9,10 @@ const { publicRuntimeConfig: env } = getNextConfig();
 const ethereumNetwork =
   env.DEFAULT_NETWORK === "localhost"
     ? "http://localhost:8545"
-    : `https://linea-goerli.infura.io/v3/${env.INFURA_API_KEY}`;
+    : `https://opt-goerli.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_ID}`;
 
 export default function useSemaphore(): SemaphoreContextType {
   const [_users, setUsers] = useState<any[]>([]);
-  const [_feedback, setFeedback] = useState<string[]>([]);
 
   const refreshUsers = useCallback(async (): Promise<void> => {
     const semaphore = new SemaphoreEthers(ethereumNetwork, {
@@ -28,40 +27,8 @@ export default function useSemaphore(): SemaphoreContextType {
     setUsers(members);
   }, []);
 
-  const addUser = useCallback(
-    (user: any) => {
-      setUsers([..._users, user]);
-    },
-    [_users]
-  );
-
-  const refreshFeedback = useCallback(async (): Promise<void> => {
-    const semaphore = new SemaphoreEthers(ethereumNetwork, {
-      address: env.SEMAPHORE_CONTRACT_ADDRESS,
-    });
-
-    const proofs = await semaphore.getGroupVerifiedProofs(env.GROUP_ID);
-
-    setFeedback(
-      proofs.map(({ signal }: any) =>
-        utils.parseBytes32String(BigNumber.from(signal).toHexString())
-      )
-    );
-  }, []);
-
-  const addFeedback = useCallback(
-    (feedback: string) => {
-      setFeedback([..._feedback, feedback]);
-    },
-    [_feedback]
-  );
-
   return {
     _users,
-    _feedback,
     refreshUsers,
-    addUser,
-    refreshFeedback,
-    addFeedback,
   };
 }

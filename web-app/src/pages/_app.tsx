@@ -25,6 +25,7 @@ import { WagmiConfig, createConfig } from "wagmi";
 import { lineaTestnet, optimismGoerli } from "wagmi/chains";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 import { ConnectKitButton } from "connectkit";
+import AnonymousIndex from "../components/AnonymousIndex";
 
 const { publicRuntimeConfig: env } = getNextConfig();
 
@@ -79,16 +80,16 @@ export default function App({ Component, pageProps }: AppProps) {
           <WagmiConfig config={config}>
             <ConnectKitProvider>
               <HStack
-                p="2"
+                pt="2"
                 alignContent="flex-end"
                 justifyContent="space-around"
               >
                 <Heading fontSize="2xl">Lichess Provider Demo</Heading>
                 <ConnectKitButton />
               </HStack>
-
+              <AnonymousIndex />
               <Container maxW="2xl" flex="1" display="flex" alignItems="center">
-                <Stack py="1" display="flex" width="100%">
+                <Stack py="1" display="flex" width="100% ">
                   <LogsContext.Provider
                     value={{
                       _logs,
