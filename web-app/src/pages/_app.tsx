@@ -1,11 +1,9 @@
+"use client";
 import {
   ChakraProvider,
   Container,
   HStack,
   Heading,
-  Icon,
-  IconButton,
-  Link,
   Spinner,
   Stack,
   Text,
@@ -26,6 +24,7 @@ import { lineaTestnet, optimismGoerli } from "wagmi/chains";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 import { ConnectKitButton } from "connectkit";
 import AnonymousIndex from "../components/AnonymousIndex";
+import dynamic from "next/dynamic";
 
 const { publicRuntimeConfig: env } = getNextConfig();
 
@@ -39,15 +38,10 @@ const config = createConfig(
   })
 );
 
-export default function App({ Component, pageProps }: AppProps) {
+function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const semaphore = useSemaphore();
   const [_logs, setLogs] = useState<string>("");
-
-  // useEffect(() => {
-  //   semaphore.refreshUsers();
-  //   semaphore.refreshFeedback();
-  // }, []);
 
   return (
     <>
@@ -83,12 +77,19 @@ export default function App({ Component, pageProps }: AppProps) {
                 pt="2"
                 alignContent="flex-end"
                 justifyContent="space-around"
+                suppressHydrationWarning={true}
               >
                 <Heading fontSize="2xl">Lichess Provider Demo</Heading>
                 <ConnectKitButton />
               </HStack>
               <AnonymousIndex />
-              <Container maxW="2xl" flex="1" display="flex" alignItems="center">
+              <Container
+                maxW="2xl"
+                flex="1"
+                display="flex"
+                alignItems="center"
+                suppressHydrationWarning={true}
+              >
                 <Stack py="1" display="flex" width="100% ">
                   <LogsContext.Provider
                     value={{
@@ -122,3 +123,7 @@ export default function App({ Component, pageProps }: AppProps) {
     </>
   );
 }
+
+export default dynamic(() => Promise.resolve(App), {
+  ssr: false,
+});

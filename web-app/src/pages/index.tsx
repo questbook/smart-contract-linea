@@ -1,5 +1,13 @@
 "use client";
-import { Button, Heading, HStack, Input, Text, VStack } from "@chakra-ui/react";
+import {
+  Button,
+  Container,
+  Heading,
+  HStack,
+  Input,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 
 import { useAccount } from "wagmi";
 import { Identity } from "@semaphore-protocol/identity";
@@ -10,7 +18,8 @@ import LogsContext from "../context/LogsContext";
 import IconAddCircleFill from "../icons/IconAddCircleFill";
 import IconRefreshLine from "../icons/IconRefreshLine";
 import useSemaphore from "../hooks/useSemaphore";
-import useReclaimPortal from "../hooks/useReclaimPortal";
+// import useReclaimPortal from "../hooks/useReclaimPortal";
+import ReclaimProve from "../components/ReclaimProve";
 
 export default function IdentitiesPage() {
   const router = useRouter();
@@ -19,7 +28,7 @@ export default function IdentitiesPage() {
   const [userName, setUsername] = useState<string>("");
   const { address, isConnected } = useAccount();
   const { _users } = useSemaphore();
-  const { attest } = useReclaimPortal();
+  // const { attest } = useReclaimPortal();
   const { setLogs } = useContext(LogsContext);
   const [_identity, setIdentity] = useState<Identity>();
   const [proof, setProof] = useState();
@@ -52,17 +61,17 @@ export default function IdentitiesPage() {
 
   const handleAttest = async () => {
     const idCommitment = _identity?.commitment.toString();
-    const res = await attest(proof, idCommitment);
+    // const res = await attest(proof, idCommitment);
   };
 
   return (
-    <div>
+    <>
       {!address && (
         <Heading textAlign="center">Please Connect your wallet</Heading>
       )}
       {address && (
-        <VStack alignItems="flex-start">
-          <HStack width="100%" flexWrap="wrap">
+        <>
+          {/* <HStack width="100%" flexWrap="wrap">
             <Text fontSize="xl" fontWeight="bold" flex="1">
               lichess username:
             </Text>
@@ -84,7 +93,7 @@ export default function IdentitiesPage() {
               Context Address:
             </Text>
             <Text>{address}</Text>
-          </HStack>
+          </HStack> */}
           {isFinishedGenerating ? (
             <Button
               w="100%"
@@ -98,20 +107,10 @@ export default function IdentitiesPage() {
               Attest with your proof
             </Button>
           ) : (
-            <Button
-              w="100%"
-              fontWeight="bold"
-              justifyContent="center"
-              colorScheme="primary"
-              px="4"
-              mt="2"
-              onClick={generateProof}
-            >
-              Generate Proof
-            </Button>
+            <ReclaimProve />
           )}
-        </VStack>
+        </>
       )}
-    </div>
+    </>
   );
 }

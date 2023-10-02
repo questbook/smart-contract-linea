@@ -15,8 +15,8 @@ const nextConfig = withPWA({
   eslint: {
     ignoreDuringBuilds: true,
   },
-  reactStrictMode: true,
-  swcMinify: true,
+  reactStrictMode: false,
+  swcMinify: false,
   env: {
     DEFAULT_NETWORK: process.env.DEFAULT_NETWORK,
     INFURA_API_KEY: process.env.INFURA_API_KEY,
