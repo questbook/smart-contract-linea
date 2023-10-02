@@ -54,9 +54,6 @@ export default async function handler(
     //   parameters: proofs[0].parameters,
     // };
 
-    proofs[0].context = (proofs[0].context as string).replaceAll('"', '\\\\"');
-
-    proofs[0].context = (proofs[0].context as string).replaceAll("\\", '"');
 
     console.log("[Callback -- TEMP] -- Proofs: ", proofs);
     const isProofCorrect = await reclaim.verifyCorrectnessOfProofs(
