@@ -19,6 +19,7 @@ const request = reclaim.requestProofs({
     new reclaim.CustomProvider({
       provider: "lichess-username",
       payload: {},
+    
     }),
   ],
 });
