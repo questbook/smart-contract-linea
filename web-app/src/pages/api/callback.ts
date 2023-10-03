@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { reclaimprotocol } from "@reclaimprotocol/reclaim-sdk";
 import { MongoClient } from "mongodb";
-import { hashClaimInfo } from "@reclaimprotocol/crypto-sdk";
 
 const dbUsername = process.env.DB_USER;
 const dbPassword = process.env.DB_PWD;
