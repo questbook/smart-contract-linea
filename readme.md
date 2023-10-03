@@ -45,8 +45,8 @@ This tutorial will guide you through the process of integrating a Dapp with Recl
 
 Before you begin, make sure you have the following:
 
-- Solidity Smart Contracts knowledge
-- Ether.js library installed
+- Dapp ready with client app and smart contract
+- Ether.js library to register dapp in reclaim contract
 
 ## Sequence Diagram
 
@@ -67,10 +67,10 @@ Before you begin, make sure you have the following:
     - Reclaim Wallet returns a signed claim (proof) to the Dapp.
 
 3. **Merkelize User**
-
+	- The MerkelizeUser function on the Reclaim Contract serves as a critical part of this verification process. Meaning that in order to verify the identity later, the user needs to be merkelized or in other word "member of semaphore group(part of merkle tree)"
     - Dapp calls `MerkelizeUser(proof, idCommitment)` on the Reclaim Contract.
     - The Reclaim Contract calls `addMember(groupId, idCommitment)` on Semaphore, another participant.
-    - Both Reclaim Contract and Semaphore emit a `MemberAdded` event.
+  -  Semaphore emits a `MemberAdded` event.
 
 4. **Semaphore Proof Generation**
 
