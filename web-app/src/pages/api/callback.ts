@@ -30,7 +30,7 @@ export default async function handler (
     console.log('[Callback -- TEMP] -- is Proof Correct? ', isProofCorrect)
 
     res.send({
-      msg: 'Callback received at backend. The backend will verify the proof now.            You can now close this window and go back to the G-coin dApp.'
+      msg: 'Callback received at backend. The backend will verify the proof now.            You can now close this window and go back to the Demo dApp.'
     })
 
     const db = client.db()

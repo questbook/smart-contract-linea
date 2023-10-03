@@ -67,7 +67,7 @@ export default function UserMerkelizer({ proofObj }: any) {
   
   return (
     <>
-      {!contractWrite.isSuccess && contractWrite.isError && (
+      {!contractWrite.isSuccess && (
         <>
           <Button
             colorScheme="primary"
@@ -83,8 +83,6 @@ export default function UserMerkelizer({ proofObj }: any) {
           {contractWrite.isLoading && <Spinner />}
         </>
       )}
-
-      {!contractWrite.isError &&(<Text textAlign={'center'}>{_logs}</Text>)}
     </>
   );
 }
