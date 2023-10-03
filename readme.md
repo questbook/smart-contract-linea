@@ -33,10 +33,63 @@ EVM smart contract that enables minting of credentials on-chain through a networ
 
 - `npm run prettier` to lint your solidity files
 
-## Integrating Dapp with Reclaim Flow
 
 
-<img src="./docs/dapp-reclaim-integration.svg">
+# Dapp Integration with Reclaim Tutorial
+
+## Introduction
+
+This tutorial will guide you through the process of integrating a Dapp with Reclaim using Solidity and Ether.js. The integration involves verifying user claims and completing actions based on the user's identity.
+
+## Prerequisites
+
+Before you begin, make sure you have the following:
+
+- Solidity Smart Contracts knowledge
+- Ether.js library installed
+
+## Sequence Diagram
+
+![Sequence Diagram](./docs/dapp-reclaim-integration.svg
+)
+
+## Steps
+
+1. **Dapp Creation**
+
+    - Dapp communicates with the Reclaim Contract to create a new Dapp using the `createDapp(uint256 externalNullifier)` function.
+    - The Reclaim Contract emits a `DappCreated` event with the Dapp's unique identifier (dappId).
+    - Dapp captures the dappId from the event.
+
+2. **Claim Verification**
+
+    - Reclaim Wallet verifies a claim using the Reclaim Wallet.
+    - Reclaim Wallet returns a signed claim (proof) to the Dapp.
+
+3. **Merkelize User**
+
+    - Dapp calls `MerkelizeUser(proof, idCommitment)` on the Reclaim Contract.
+    - The Reclaim Contract calls `addMember(groupId, idCommitment)` on Semaphore, another participant.
+    - Both Reclaim Contract and Semaphore emit a `MemberAdded` event.
+
+4. **Semaphore Proof Generation**
+
+    - Semaphore SDK generates a Semaphore proof.
+
+5. **Verify User Identity**
+
+    - Dapp verifies the user's identity using the Semaphore proof.
+    - If verification is successful, Dapp can proceed with actions like airdrops.
+
+6. **Completing the Action**
+
+    - Dapp Smart Contract calls `airDrop()` or any other relevant action.
+    - Dapp Smart Contract verifies the user's identity with the Reclaim Contract using `verifyMerkleIdentity(semaphoreProof, dappId, externalNullifier)`.
+    - The Reclaim Contract verifies the proof with Semaphore using `verifyProof`.
+    - If successful, the Reclaim Contract completes the action and emits a `ProofVerified` event.
+    - Dapp Smart Contract completes the airdrop action successfully.
+
+
 
 ## Notes
 
