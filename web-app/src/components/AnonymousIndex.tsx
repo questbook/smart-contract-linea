@@ -12,6 +12,7 @@ export default function AnonymousIndex() {
   const { _users, refreshUsers } = useSemaphore();
 
   useEffect(() => {
+    refreshUsers();
     const interval = setInterval(() => {
       refreshUsers();
     }, 2000);

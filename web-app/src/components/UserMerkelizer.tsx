@@ -49,6 +49,7 @@ export default function UserMerkelizer({ proofObj }: any) {
     onSuccess(data) {
       console.log("Successful - register prepare: ", data);
       setIsPrepared(true);
+      setLogs('User has been merkelized successfully')
     },
     onError(error) {
       console.log("Error in verify Proof cause: ", error.cause);
@@ -75,7 +76,6 @@ export default function UserMerkelizer({ proofObj }: any) {
             borderRadius="2xl"
             onClick={() => {
               contractWrite.write?.();
-              setLogs('User has been merkelized successfully')
             }}
           >
             Register Identity
