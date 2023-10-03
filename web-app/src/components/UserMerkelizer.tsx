@@ -2,12 +2,14 @@ import { Identity } from "@semaphore-protocol/identity";
 import { useAccount } from "wagmi";
 import { useContractWrite, usePrepareContractWrite } from "wagmi";
 import RECLAIM from "../../contract-artifacts/Reclaim.json";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ethers } from "ethers";
+import { Button, Spinner, Text } from "@chakra-ui/react";
+import LogsContext from "../context/LogsContext";
 
 export default function UserMerkelizer({ proofObj }: any) {
   const { address } = useAccount();
-
+  const { _logs, setLogs } = useContext(LogsContext);
   const [identity, setIdentity] = useState<Identity>();
   const [isPrepared, setIsPrepared] = useState(false);
 
@@ -49,31 +51,40 @@ export default function UserMerkelizer({ proofObj }: any) {
       setIsPrepared(true);
     },
     onError(error) {
-      console.log("Error in verify Proof: ", error);
+      console.log("Error in verify Proof cause: ", error.cause);
+      console.log("Error in verify Proof message: ", error.message);
+      console.log("Error in verify Proof name: ", error.name);
+      if(error.message.includes('AlreadyMerkelized')){
+        setLogs('This user is already merkelized!!!!')
+        
+      }
+      
     },
   });
+  
 
   const contractWrite = useContractWrite(config);
+  
   return (
     <>
-      {!contractWrite.isSuccess && (
-        <div className="button-container">
-          <button
-            className="glow-on-hover"
+      {!contractWrite.isSuccess && contractWrite.isError && (
+        <>
+          <Button
+            colorScheme="primary"
+            p="10"
+            borderRadius="2xl"
             onClick={() => {
               contractWrite.write?.();
+              setLogs('User has been merkelized successfully')
             }}
-            disabled={
-              contractWrite.isLoading || contractWrite.isSuccess || !isPrepared
-            }
           >
-            Verify Reclaim Proof &
-            <br />
-            Register Semaphore Identity
-          </button>
-          {contractWrite.isLoading && <div className="loading-spinner" />}
-        </div>
+            Register Identity
+          </Button>
+          {contractWrite.isLoading && <Spinner />}
+        </>
       )}
+
+      {!contractWrite.isError &&(<Text textAlign={'center'}>{_logs}</Text>)}
     </>
   );
 }

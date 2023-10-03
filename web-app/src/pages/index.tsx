@@ -38,7 +38,7 @@ export default function IdentitiesPage() {
     if (!isConnected) return;
     const identity = new Identity(address);
     setIdentity(identity);
-    setLogs("Give  👆🏽");
+    setLogs("Give  Proof for your lichess username claim👆🏽");
   }, [isConnected, address]);
 
   const generateProof = async () => {

@@ -1,5 +1,4 @@
 import { SemaphoreEthers } from "@semaphore-protocol/data";
-import { BigNumber, utils } from "ethers";
 import getNextConfig from "next/config";
 import { useCallback, useState } from "react";
 import { SemaphoreContextType } from "../context/SemaphoreContext";
@@ -18,7 +17,9 @@ export default function useSemaphore(): SemaphoreContextType {
     const semaphore = new SemaphoreEthers(ethereumNetwork, {
       address: env.SEMAPHORE_CONTRACT_ADDRESS,
     });
+    console.log(env.SEMAPHORE_CONTRACT_ADDRESS);
     let members: any[] = [];
+    console.log(env.GROUP_ID);
     try {
       members = await semaphore.getGroupMembers(env.GROUP_ID);
     } catch (error: any) {

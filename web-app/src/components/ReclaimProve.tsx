@@ -3,6 +3,7 @@ import QRCode from "react-qr-code";
 import { Proof } from "@reclaimprotocol/reclaim-sdk";
 import { useAccount } from "wagmi";
 import UserMerkelizer from "./UserMerkelizer";
+import { Divider, Flex, Text } from "@chakra-ui/react";
 
 function App() {
   const backendBase = "";
@@ -85,56 +86,49 @@ function App() {
 
   return (
     <>
-      <div>
-        <div className="leftside">
-          {isProofReceived && <UserMerkelizer proofObj={proofObj} />}
-          {
-            // If template is not ok
-            template && !isTemplateOk && !isProofReceived && (
-              <>
-                <h2>Prove that your own a google account.</h2>
-                <div>{template}</div>
-              </>
-            )
-          }
+      {isProofReceived && <UserMerkelizer proofObj={proofObj} />}
+      {
+        // If template is not ok
+        template && !isTemplateOk && !isProofReceived && (
+          <>
+            <h2>Prove that your own a google account.</h2>
+            <div>{template}</div>
+          </>
+        )
+      }
 
-          {!isProofReceived && template && isTemplateOk && (
-            <div>
-              <div>
-                Connected to {connector?.name} at {address}
-              </div>
-              <br />
-              <div>
-                Scan/Click the QR code to be redirected to Reclaim Wallet.
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {!isProofReceived && template && isTemplateOk && (
+        <>
+          <Text>
+            Connected to {connector?.name} at {address}
+          </Text>
+          <Divider />
+          <Text>
+            Scan/Click the QR code to be redirected to Reclaim Wallet.
+          </Text>
+          <Divider />
+        </>
+      )}
 
       {
         // Show the QR code only when it has to be shown
         template && isTemplateOk && !isProofReceived && (
-          <div className="rightside2">
-            <div className="QR-black">
-              <div className="QR-white">
-                <a
-                  href={template}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={template}
-                >
-                  <QRCode
-                    size={256}
-                    value={template}
-                    fgColor="#000"
-                    bgColor="#fff"
-                    className="QR-resize"
-                  />
-                </a>
-              </div>
-            </div>
-          </div>
+          <Flex justifyContent={"center"}>
+            <a
+              href={template}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={template}
+            >
+              <QRCode
+                size={256}
+                value={template}
+                fgColor="#000"
+                bgColor="#fff"
+                className="QR-resize"
+              />
+            </a>
+          </Flex>
         )
       }
     </>

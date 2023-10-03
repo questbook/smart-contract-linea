@@ -46,7 +46,7 @@ function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>Semaphore boilerplate</title>
+        <title>Reclaim Demo</title>
         <link rel="icon" href="/favicon.ico" />
         <link
           rel="apple-touch-icon"
@@ -79,7 +79,7 @@ function App({ Component, pageProps }: AppProps) {
                 justifyContent="space-around"
                 suppressHydrationWarning={true}
               >
-                <Heading fontSize="2xl">Lichess Provider Demo</Heading>
+                <Heading fontSize="xl">Lichess Provider</Heading>
                 <ConnectKitButton />
               </HStack>
               <AnonymousIndex />
