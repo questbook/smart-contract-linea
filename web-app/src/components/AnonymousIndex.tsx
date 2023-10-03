@@ -5,7 +5,7 @@ import { useEffect } from "react";
 const calcIndexStr = (index: number) => {
   if (index >= 10) return "Excellent";
   if (index >= 2) return "Good";
-  return "Bad";
+  return "Low";
 };
 
 export default function AnonymousIndex() {
