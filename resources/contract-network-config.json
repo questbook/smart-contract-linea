@@ -84,11 +84,11 @@
         "explorer": "https://goerli-optimism.etherscan.io/address/0xD594971cea3fb43Dd3d2De87C216ac2aCE320fc2"
       },
       "ReclaimPortal": {
-        "address": "0x7C2421aBbbA532a387A2c074545C1B5e3435F6D4",
+        "address": "0x8A07917338d6b67735ED65a6106FF8C0ba488aBA",
         "explorer": ""
       },
       "UserMerkelizerModule": {
-        "address": "0x307Da9d870687964431db130EC71F39f408faf68",
+        "address": "0xbd5EB413D84946256117fd7bE6F67e0EBb28146f",
         "explorer": ""
       }
     }

@@ -92,11 +92,11 @@ Let’s imagine that you are building a DApp; your DApp will have two parts clie
             uint256 public externalNullifier;
             bytes32 public dappId;
 
-            function storeForReclaim(uint256 _externalNullifier, bytes32 _dappId) external onlyOwner { 
-                externalNullifier = _externalNullifier;
-                dappId = _dappId;
-
-            }
+           	constructor(uint256 _externalNullifier, bytes32 _dappId, address reclaimAddress){
+		        externalNullifier = _externalNullifier;
+		        dappId = _dappId;
+		        ....
+        	}
         }
         ```
 

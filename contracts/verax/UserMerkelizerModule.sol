@@ -16,7 +16,7 @@ contract UserMerkelizerModule is AbstractModule {
 	}
 
 	function run(
-		AttestationPayload memory attestationPayload,
+		AttestationPayload memory /*attestationPayload*/,
 		bytes memory validationPayload,
 		address /* txSender */,
 		uint256 /* value */
@@ -25,15 +25,16 @@ contract UserMerkelizerModule is AbstractModule {
 			validationPayload,
 			(Reclaim.Proof, uint256)
 		);
-		string memory subject = StringUtils.bytes2str(attestationPayload.subject);
-		string memory contextAddress = StringUtils.toLower(
-			reclaim.getContextAddressFromProof(proof)
-		);
-		require(
-			StringUtils.areEqual(subject, contextAddress),
-			"subject or contextAddress is invalid"
+
+		bool isMerkelized = reclaim.getMerkelizedUserParams(
+			proof.claimInfo.provider,
+			proof.claimInfo.parameters
 		);
 
-		reclaim.merkelizeUser(proof, _identityCommitment);
+		if (isMerkelized) {
+			reclaim.verifyProof(proof);
+		} else {
+			reclaim.merkelizeUser(proof, _identityCommitment);
+		}
 	}
 }

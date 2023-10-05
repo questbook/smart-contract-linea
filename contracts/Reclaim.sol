@@ -304,26 +304,33 @@ contract Reclaim is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 	}
 
 	function verifyMerkelIdentity(
-		uint256 groupId,
+		string memory provider,
 		uint256 _merkleTreeRoot,
 		uint256 _signal,
 		uint256 _nullifierHash,
 		uint256 _externalNullifier,
 		bytes32 dappId,
 		uint256[8] calldata _proof
-	) external {
+	) external returns (bool) {
 		require(
 			dappIdToExternalNullifier[dappId] == _externalNullifier,
 			"Dapp Not Created"
 		);
-		SemaphoreInterface(semaphoreAddress).verifyProof(
-			groupId,
-			_merkleTreeRoot,
-			_signal,
-			_nullifierHash,
-			_externalNullifier,
-			_proof
-		);
+		uint256 groupId = calculateGroupIdFromProvider(provider);
+		try
+			SemaphoreInterface(semaphoreAddress).verifyProof(
+				groupId,
+				_merkleTreeRoot,
+				_signal,
+				_nullifierHash,
+				_externalNullifier,
+				_proof
+			)
+		{
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	// admin functions ---
