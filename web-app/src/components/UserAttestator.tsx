@@ -159,7 +159,6 @@ export default function UserAttestator ({ proofObj }: any) {
       }
     ],
     functionName: 'attest',
-    // @ts-expect-error events
     args: [attestationRequest],
     chainId: 420,
     onSuccess (data) {
